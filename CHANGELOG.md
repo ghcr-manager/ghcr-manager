@@ -1,46 +1,32 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### Added
-
-- Added the initial TypeScript project skeleton for shared core logic, CLI, and a thin action wrapper.
-- Added a SQLite-backed schema and repository layer for package scans.
-- Added a fixture-backed `scan` flow and `plan-summary` command for the first read-only increment.
-- Added implementation tracking notes in `docs/implementation-notes.md`.
-
-### Changed
-
-- Replaced Python-based Markdown and YAML linting with a Node-native lint stack using ESLint, `eslint-plugin-yml`,
-  `markdownlint-cli2`, and Prettier.
-
-## [0.0.4] - 2026-03-27
-
-### Fixed
-
-- Switched release README tag verification from `rg -P` to `grep -P`.
-
-## [0.0.2] - 2026-03-25
-
-### Fixed
-
-- Cleaned up workflow permissions.
-
-## [0.0.1] - 2026-03-25
+## [0.0.1] - 2026-04-30
 
 ### Added
 
-- Initial public release of the `action-template` repository template for GitHub Actions.
-- Repository scaffolding for release, change-validation, and test-suite workflows.
-- Python-based linting setup with `pymarkdownlnt` and `yamllint`.
-- A user-facing `README.md` with a pinned action usage example suitable for release validation.
+- Initial public release of `ghcr-manager` as a GitHub Action plus companion CLI.
+- GHCR scan flow that loads package versions, tags, manifests, descriptors, and manifest graph edges into SQLite.
+- Manifest reachability precomputation (`manifest_reachability`) for fast graph-based analysis queries.
+- Raw payload storage for GitHub package-version items and GHCR manifests (`package_version_payloads`,
+  `manifest_payloads`).
+- Scan lifecycle tracking with scan history (`package_scans`) and status transitions (`running|completed|failed`).
+- Immutable per-scan UUID (`package_scans.scan_uuid`) for robust duplicate detection across merged databases.
+- Optional action artifact upload for scan DB export (`upload-db-artifact`, optional retention override).
+- Manual workflow for interactive scan runs (`.github/workflows/manual-run.yml`).
+- Missing-manifest investigation SQL recipes (`docs/missing-manifests-queries.md`) and schema/terminology docs.
 
 ### Changed
 
-- Made the release workflow validate README action references against the current repository owner and name instead of a
-  copied hard-coded source repository reference.
+- Enforced stricter repository conventions:
+  - source/test tree mirroring
+  - cross-folder imports via folder `index.ts`
+  - internal source naming (`_*.ts`)
+- Hardened CI/workflows with explicit token permissions and immutable action reference checks.
+- Refined action/runtime flow to focus on scan + DB export behavior for this release.
