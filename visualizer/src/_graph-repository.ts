@@ -5,6 +5,8 @@ import type { GraphEdge, GraphResponse, ManifestDetails, ManifestResolution } fr
 interface _ManifestRow {
   digest: string;
   version_id: number;
+  created_at: string;
+  updated_at: string;
   manifest_kind: string | null;
   media_type: string;
   platform_os: string | null;
@@ -238,6 +240,8 @@ export class GraphRepository {
       SELECT
         manifest.digest,
         manifest.version_id,
+        package_version.created_at,
+        package_version.updated_at,
         manifest.manifest_kind,
         manifest.media_type,
         platform.platform_os,
@@ -248,6 +252,9 @@ export class GraphRepository {
         ${payloadColumn} AS raw_json,
         tag.tag
       FROM manifests manifest
+      JOIN package_versions package_version
+        ON package_version.scan_id = manifest.scan_id
+       AND package_version.version_id = manifest.version_id
       LEFT JOIN manifest_payloads payload
         ON payload.scan_id = manifest.scan_id
        AND payload.digest = manifest.digest
@@ -272,6 +279,8 @@ export class GraphRepository {
           id: row.digest,
           digest: row.digest,
           versionId: row.version_id,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
           manifestKind: row.manifest_kind,
           mediaType: row.media_type,
           displayPlatform: _formatPlatform(row.platform_os, row.platform_architecture, row.platform_variant),
@@ -292,11 +301,7 @@ export class GraphRepository {
   }
 }
 
-function _formatPlatform(
-  os: string | null,
-  architecture: string | null,
-  variant: string | null
-): string | null {
+function _formatPlatform(os: string | null, architecture: string | null, variant: string | null): string | null {
   const normalizedOs = _normalizePlatformPart(os);
   const normalizedArchitecture = _normalizePlatformPart(architecture);
   const normalizedVariant = _normalizePlatformPart(variant);

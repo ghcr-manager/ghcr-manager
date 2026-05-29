@@ -4,6 +4,8 @@ export interface GraphNode {
   id: string;
   digest: string;
   versionId: number;
+  createdAt: string;
+  updatedAt: string;
   manifestKind: string | null;
   mediaType: string;
   displayPlatform: string | null;

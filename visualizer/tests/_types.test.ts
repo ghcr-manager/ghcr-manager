@@ -7,6 +7,8 @@ test("visualizer graph types describe the expected graph payload shape", () => {
     id: "sha256:center",
     digest: "sha256:center",
     versionId: 1,
+    createdAt: "2026-05-29T10:00:00.000Z",
+    updatedAt: "2026-05-29T10:00:00.000Z",
     manifestKind: "multi_arch_manifest",
     mediaType: "application/vnd.oci.image.index.v1+json",
     displayPlatform: null,

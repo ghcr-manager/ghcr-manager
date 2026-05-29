@@ -179,12 +179,36 @@ test("graph repository returns visible intra-neighborhood edges and omits digest
     assert.equal(graph.centerDigest, "sha256:center");
     assert.deepEqual(
       graph.nodes
-        .map((node) => ({ digest: node.digest, tags: node.tags, displayPlatform: node.displayPlatform }))
+        .map((node) => ({
+          digest: node.digest,
+          tags: node.tags,
+          displayPlatform: node.displayPlatform,
+          createdAt: node.createdAt,
+          updatedAt: node.updatedAt
+        }))
         .sort((left, right) => left.digest.localeCompare(right.digest)),
       [
-        { digest: "sha256:center", tags: ["single"], displayPlatform: null },
-        { digest: "sha256:child", tags: ["single-amd64"], displayPlatform: "linux/amd64" },
-        { digest: "sha256:signature", tags: [], displayPlatform: null }
+        {
+          digest: "sha256:center",
+          tags: ["single"],
+          displayPlatform: null,
+          createdAt: "2026-05-29T10:00:00.000Z",
+          updatedAt: "2026-05-29T10:00:00.000Z"
+        },
+        {
+          digest: "sha256:child",
+          tags: ["single-amd64"],
+          displayPlatform: "linux/amd64",
+          createdAt: "2026-05-29T10:00:00.000Z",
+          updatedAt: "2026-05-29T10:00:00.000Z"
+        },
+        {
+          digest: "sha256:signature",
+          tags: [],
+          displayPlatform: null,
+          createdAt: "2026-05-29T10:00:00.000Z",
+          updatedAt: "2026-05-29T10:00:00.000Z"
+        }
       ]
     );
     assert.deepEqual(graph.edges.map((edge) => edge.kind).sort(), ["image-child", "referrer", "referrer"]);
@@ -206,6 +230,8 @@ test("graph repository returns manifest details including payload", () => {
     assert.equal(manifest.manifestKind, "signature_manifest");
     assert.equal(manifest.rawJson, JSON.stringify({ kind: "signature" }));
     assert.equal(manifest.displayPlatform, null);
+    assert.equal(manifest.createdAt, "2026-05-29T10:00:00.000Z");
+    assert.equal(manifest.updatedAt, "2026-05-29T10:00:00.000Z");
     assert.deepEqual(manifest.tags, []);
   } finally {
     cleanup();

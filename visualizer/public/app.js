@@ -19,6 +19,8 @@ const elements = {
   rawJsonContent: document.querySelector("#raw-json-content"),
   detailDigest: document.querySelector("#detail-digest"),
   detailVersion: document.querySelector("#detail-version"),
+  detailCreatedAt: document.querySelector("#detail-created-at"),
+  detailUpdatedAt: document.querySelector("#detail-updated-at"),
   detailKind: document.querySelector("#detail-kind"),
   detailMediaType: document.querySelector("#detail-media-type"),
   detailPlatform: document.querySelector("#detail-platform"),
@@ -210,6 +212,8 @@ async function loadManifestDetails(digest) {
   elements.detailsEmpty.hidden = true;
   elements.detailDigest.textContent = details.digest;
   elements.detailVersion.textContent = String(details.versionId);
+  elements.detailCreatedAt.textContent = details.createdAt;
+  elements.detailUpdatedAt.textContent = details.updatedAt;
   elements.detailKind.textContent = details.manifestKind ?? "-";
   elements.detailMediaType.textContent = details.mediaType;
   elements.detailPlatform.textContent = details.displayPlatform ?? "-";
