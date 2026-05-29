@@ -15,7 +15,7 @@ export default defineConfig(
   js.configs.recommended,
   ..._tsRecommendedConfigs,
   {
-    files: ["src/**/*.ts", "tests/**/*.ts"],
+    files: ["src/**/*.ts", "tests/**/*.ts", "visualizer/src/**/*.ts", "visualizer/tests/**/*.ts"],
     languageOptions: {
       globals: {
         ...globals.node

@@ -74,6 +74,8 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
 - Coverage note:
   - CLI dispatch, cleanup-summary Markdown branches, and planner repository wrapper methods now have explicit tests so
     post-refactor line coverage reflects the live surface more closely
+  - root `test` / `coverage` scripts must enable Bash `globstar` before expanding `tests/**/*.test.ts`; otherwise deeper
+    mirrored test paths like `tests/db/planner/*` and `tests/ingest/github/*` are skipped in this environment
 - Action summary handoff note:
   - command summary JSON is now handed across action steps by file path instead of large env/expression payloads
   - this avoids GitHub template-memory and argument-length failures on large cleanup summaries
@@ -93,6 +95,18 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
   - subdirectory actions that need repo-root helper scripts must resolve them from the parent of `$GITHUB_ACTION_PATH`
   - that avoids local/direct-run failures where `$GITHUB_ACTION_PATH` points at the sub-action directory itself, while
     still avoiding caller-repo path resolution for remote consumers
+- Visualizer subproject note:
+  - a new repo-local `visualizer/` workspace now provides a local session web server plus browser UI for scan DB graph
+    inspection
+  - it is intentionally separate from `src/` so action/CLI runtime code and browser/server code do not blur together
+  - root npm scripts and Dependabot now include the visualizer workspace
+  - same owner/package/scan/center reloads now preserve prior node positions by digest and skip force relayout when the
+    visible node set is unchanged
+  - node click now selects only; the details panel owns explicit `Expand 1 hop` and `Center here` actions
+  - expansion now merges one-hop neighborhoods into the current graph instead of replacing the whole graph, so users can
+    grow one branch of a manifest graph without forcing one more full depth layer everywhere
+  - manifest nodes now prioritize tags and manifest-kind badges visually; digest text was removed from node labels and
+    raw JSON moved behind an on-demand dialog instead of living in the fixed-width side panel
 
 ## Current Action / DB Notes
 
@@ -214,6 +228,20 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
   - DB artifact / merge workflow
 - [ ] Revisit DB/schema onboarding later with example-driven guidance if release feedback shows users need it.
 - [ ] Review release workflow and public-facing metadata before the first release tag.
+- [x] Add an initial local visualizer subproject for manifest-graph inspection:
+  - repo-local `visualizer/` workspace with its own TypeScript build/test/lint scripts
+  - read-only SQLite query layer for latest-scan resolution, exact tag/digest manifest resolution, and bounded
+    bidirectional graph neighborhoods from direct manifest edges
+  - local HTTP server plus static browser UI with Cytoscape rendering, depth control, and recenter-on-click behavior
+  - root npm scripts and Dependabot updated to cover the workspace
+- [ ] Follow up on the visualizer after first-pass usage:
+  - validate the current node/edge styling against real GHCR graphs such as the `single` package scenario
+  - decide whether the next visualizer increment should be per-node expand, richer manifest search/picking, or more
+    direct edge provenance labeling in the UI
+  - if same-center depth expansion still feels too jumpy, move from full graph reloads to incremental node/edge addition
+    on the client so existing layouts stay stable by default
+  - decide later whether image-platform display should derive one tuple from `manifest_descriptors` when all real
+    descriptor platforms for a manifest agree
 - [x] Catch up release metadata for `0.9.7` after the post-`0.9.6` commit range:
   - add a real `CHANGELOG.md` entry synthesized from commits since tag `0.9.6` / commit `d4b42011`
   - bump `package.json` and `package-lock.json` to `0.9.7`

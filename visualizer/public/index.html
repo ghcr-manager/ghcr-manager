@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ghcr-manager visualizer</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="layout">
+      <section class="controls">
+        <h1>ghcr-manager visualizer</h1>
+        <form id="search-form">
+          <label>
+            Owner
+            <input id="owner" name="owner" required />
+          </label>
+          <label>
+            Package
+            <input id="package" name="package" required />
+          </label>
+          <label>
+            Scan ID
+            <input id="scan-id" name="scan_id" inputmode="numeric" />
+          </label>
+          <label>
+            Lookup
+            <select id="lookup-mode" name="lookup_mode">
+              <option value="tag">Tag</option>
+              <option value="digest">Digest</option>
+            </select>
+          </label>
+          <label>
+            Value
+            <input id="lookup-value" name="lookup_value" required />
+          </label>
+          <label>
+            Depth
+            <input id="depth" name="depth" type="number" min="0" max="30" value="1" required />
+          </label>
+          <button type="submit">Load graph</button>
+        </form>
+        <div class="legend">
+          <h2>Edges</h2>
+          <p><span class="legend-line solid"></span> image-child</p>
+          <p><span class="legend-line dashed"></span> referrer</p>
+          <p><span class="legend-line dotted"></span> digest-tag-referrer</p>
+        </div>
+        <div id="status" class="status"></div>
+      </section>
+      <section class="graph-panel">
+        <div id="graph"></div>
+      </section>
+      <aside class="details">
+        <h2>Manifest</h2>
+        <div id="details-empty">Select a manifest.</div>
+        <dl id="details" hidden>
+          <dt>Actions</dt>
+          <dd>
+            <div class="detail-actions">
+              <button id="expand-node" type="button" disabled>Expand 1 hop</button>
+              <button id="center-node" type="button" disabled>Center here</button>
+              <button id="show-raw-json" type="button" disabled>View raw JSON</button>
+            </div>
+          </dd>
+          <dt>Digest</dt>
+          <dd id="detail-digest"></dd>
+          <dt>Version</dt>
+          <dd id="detail-version"></dd>
+          <dt>Kind</dt>
+          <dd id="detail-kind"></dd>
+          <dt>Media Type</dt>
+          <dd id="detail-media-type"></dd>
+          <dt>Artifact Type</dt>
+          <dd id="detail-artifact-type"></dd>
+          <dt>Subject</dt>
+          <dd id="detail-subject"></dd>
+          <dt>Tags</dt>
+          <dd id="detail-tags"></dd>
+        </dl>
+      </aside>
+    </main>
+    <dialog id="raw-json-dialog" class="raw-json-dialog">
+      <div class="raw-json-dialog__header">
+        <h2>Raw JSON</h2>
+        <button id="close-raw-json" type="button">Close</button>
+      </div>
+      <pre id="raw-json-content"></pre>
+    </dialog>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

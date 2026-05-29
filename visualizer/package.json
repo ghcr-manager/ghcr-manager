@@ -1,0 +1,29 @@
+{
+  "name": "ghcr-manager-visualizer",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit --project tsconfig.json",
+    "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "test": "bash -lc 'shopt -s globstar nullglob; node --import tsx --test tests/**/*.test.ts'"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.9.0",
+    "cytoscape": "^3.33.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^24.12.4",
+    "eslint": "^10.2.1",
+    "globals": "^17.5.0",
+    "tsx": "^4.20.6",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.46.2"
+  }
+}
