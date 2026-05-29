@@ -266,11 +266,25 @@ test("rebuildManifestReachability stitches digest-tag helper edges into recursiv
     descendant_digest: string;
     min_distance: number;
   }>;
+  const helperReachabilityRows = database
+    .prepare(
+      `
+        SELECT ancestor_digest, descendant_digest, min_distance
+        FROM manifest_reachability
+        WHERE ancestor_digest = ?
+        ORDER BY descendant_digest
+      `
+    )
+    .all(helperDigest) as Array<{
+    ancestor_digest: string;
+    descendant_digest: string;
+    min_distance: number;
+  }>;
 
   assert.deepEqual(digestTagEdgeRows, [
     {
-      parent_digest: rootDigest,
-      child_digest: helperDigest,
+      parent_digest: helperDigest,
+      child_digest: rootDigest,
       edge_kind: "digest-tag-referrer"
     }
   ]);
@@ -279,16 +293,23 @@ test("rebuildManifestReachability stitches digest-tag helper edges into recursiv
       ancestor_digest: rootDigest,
       descendant_digest: rootDigest,
       min_distance: 0
-    },
+    }
+  ]);
+  assert.deepEqual(helperReachabilityRows, [
     {
-      ancestor_digest: rootDigest,
-      descendant_digest: helperDigest,
+      ancestor_digest: helperDigest,
+      descendant_digest: rootDigest,
       min_distance: 1
     },
     {
-      ancestor_digest: rootDigest,
+      ancestor_digest: helperDigest,
+      descendant_digest: helperDigest,
+      min_distance: 0
+    },
+    {
+      ancestor_digest: helperDigest,
       descendant_digest: childDigest,
-      min_distance: 2
+      min_distance: 1
     }
   ]);
 

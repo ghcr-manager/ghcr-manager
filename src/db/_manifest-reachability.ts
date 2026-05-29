@@ -109,20 +109,18 @@ function _refreshDigestTagEdges(database: Database.Database, scanId: number): vo
         INSERT OR IGNORE INTO manifest_edges(scan_id, parent_digest, child_digest, edge_kind)
         SELECT
           t.scan_id,
-          'sha256:' || SUBSTR(t.tag, 8, 64) AS parent_digest,
-          m.digest AS child_digest,
+          m.digest AS parent_digest,
+          'sha256:' || SUBSTR(t.tag, 8, 64) AS child_digest,
           'digest-tag-referrer' AS edge_kind
         FROM tags t
         JOIN manifests m
           ON m.scan_id = t.scan_id
          AND m.version_id = t.version_id
-        JOIN manifests parent_manifest
-          ON parent_manifest.scan_id = t.scan_id
-         AND parent_manifest.digest = 'sha256:' || SUBSTR(t.tag, 8, 64)
+        JOIN manifests child_manifest
+          ON child_manifest.scan_id = t.scan_id
+         AND child_manifest.digest = 'sha256:' || SUBSTR(t.tag, 8, 64)
         WHERE t.scan_id = ?
-          AND t.tag LIKE 'sha256-%'
-          AND LENGTH(t.tag) >= 71
-          AND SUBSTR(t.tag, 8, 64) NOT GLOB '*[^0-9A-Fa-f]*'
+          AND t.is_digest_tag = 1
       `
     )
     .run(scanId);
