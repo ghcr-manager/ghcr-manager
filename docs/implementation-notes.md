@@ -131,14 +131,14 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
   - `DeletePlanValidationReasonCodes`
   - broken-index resolver modes
 - Manifest kind note:
-  - `classifyManifestKind(document)` now sets `cross_arch_manifest` directly from the fetched index payload when more
+  - `classifyManifestKind(document)` now sets `multi_arch_manifest` directly from the fetched index payload when more
     than one direct descriptor carries a real platform; single-platform indexes remain `index_manifest`
 - Manifest platform note:
   - `manifests.platform_os|platform_architecture|platform_variant` were removed from schema and runtime code
   - descriptor-scoped platform data remains on `manifest_descriptors`, which matches the actual source of truth in OCI
     index documents
 - Scenario assertion note:
-  - cleanup live-scenario definitions now expect real Docker/OCI multi-arch roots as `cross_arch_manifest`, not the
+  - cleanup live-scenario definitions now expect real Docker/OCI multi-arch roots as `multi_arch_manifest`, not the
     older `image_index` label
 - Cleanup selected-tag audit note:
   - `cleanup_selected_tags` rows are inserted with `is_deleted = 0`
@@ -151,7 +151,7 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
 - [ ] Clean up remaining repo rough edges before first public release.
 - [x] Refactor the cleanup step summary toward release-facing terminology and counts:
   - replace planner-heavy labels like `root`/`closure` in the Markdown surface with user-facing item wording
-  - derive planned delete counts for tags, images, cross-arch manifests, and optional artifact/signature classes from
+  - derive planned delete counts for tags, images, multi-arch manifests, and optional artifact/signature classes from
     one SQL query keyed by the persisted `cleanup_run_id`
   - render cleanup filters as a table instead of a JSON blob in the Markdown summary
   - summarize long array-based filter values in the table and list the actual patterns below it so regex-heavy runs stay
@@ -194,7 +194,7 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
   - broken-index resolver mode
 - [x] Split broad image-index classification into:
   - `index_manifest` for generic OCI/Docker index-list documents
-  - `cross_arch_manifest` only when the stored graph shows direct child image manifests and no helper digest tag
+  - `multi_arch_manifest` only when the stored graph shows direct child image manifests and no helper digest tag
 - [x] Implement user-facing run output for `cleanup`:
   - stable cleanup summary JSON from the CLI
   - action summary JSON file-path output
@@ -257,7 +257,7 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
 - Older-than doc note:
   - README cleanup command notes now explicitly list the real long-form `older-than` syntax and the supported units
   - CLI docs keep the same unit list for the shell surface
-  - the user-facing Markdown summary now emphasizes planned tag/image/cross-arch delete counts and uses item-oriented
+  - the user-facing Markdown summary now emphasizes planned tag/image/multi-arch delete counts and uses item-oriented
     wording instead of planner-internal `root` / `closure` language
   - `DeletePlan` no longer carries denormalized `validationSummary` counts
   - those counts are now derived where needed:
@@ -289,5 +289,5 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
   - the resulting release-facing themes are:
     - cleanup summary/output polish
     - action argv preparation and artifact-download simplification
-    - cross-arch manifest classification refinement
+    - multi-arch manifest classification refinement
     - cleanup audit-state correctness and DB-merge tag metadata preservation

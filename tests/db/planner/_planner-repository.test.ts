@@ -181,7 +181,7 @@ test("planner repository carries delete-ghost-images planner metadata through ta
   writer.insertManifest({
     versionId: 201,
     digest: "sha256:ghost-index",
-    manifestKind: ManifestKinds.crossArchManifest,
+    manifestKind: ManifestKinds.multiArchManifest,
     mediaType: "application/vnd.oci.image.index.v1+json"
   });
   writer.insertTag({
@@ -214,7 +214,7 @@ test("planner repository carries delete-ghost-images planner metadata through ta
     {
       versionId: 201,
       digest: "sha256:ghost-index",
-      manifestKind: ManifestKinds.crossArchManifest,
+      manifestKind: ManifestKinds.multiArchManifest,
       reason: "delete-tags-all-tags-selected",
       selectionMode: "delete-root"
     }
@@ -240,7 +240,7 @@ test("planner repository carries delete-partial-images planner metadata through 
   writer.insertManifest({
     versionId: 201,
     digest: "sha256:partial-index",
-    manifestKind: ManifestKinds.crossArchManifest,
+    manifestKind: ManifestKinds.multiArchManifest,
     mediaType: "application/vnd.oci.image.index.v1+json"
   });
   writer.insertTag({
@@ -284,7 +284,7 @@ test("planner repository carries delete-partial-images planner metadata through 
     {
       versionId: 201,
       digest: "sha256:partial-index",
-      manifestKind: ManifestKinds.crossArchManifest,
+      manifestKind: ManifestKinds.multiArchManifest,
       reason: "delete-tags-all-tags-selected",
       selectionMode: "delete-root"
     }

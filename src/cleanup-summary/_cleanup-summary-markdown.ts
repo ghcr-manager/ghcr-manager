@@ -25,7 +25,7 @@ export function renderCleanupSummaryMarkdown(
     `| 🏷️ Selected tags | ${summary.directTargetTags.length} |`,
     `| 🔖 Deleted tags | ${summary.changes.deletedTags} |`,
     `| 🖼️ Deleted images | ${summary.changes.deletedImages} |`,
-    `| 📚 Deleted cross-arch manifests | ${summary.changes.deletedCrossArchManifests} |`,
+    `| 📚 Deleted multi-arch manifests | ${summary.changes.deletedMultiArchManifests} |`,
     `| 🧱 Deleted indexes | ${summary.changes.deletedIndexes} |`,
     `| 📄 Deleted total | ${summary.changes.deletedTotal} |`,
     `| 🔗 Tag-only updates | ${summary.untagOnlyRoots.length} |`,
@@ -50,7 +50,7 @@ export function renderCleanupSummaryMarkdown(
 function _renderPlannedDeleteBreakdown(summary: CleanupSummary): string[] {
   const rows = [
     { label: "Images", count: summary.changes.deletedImages },
-    { label: "Cross-arch manifests", count: summary.changes.deletedCrossArchManifests },
+    { label: "Multi-arch manifests", count: summary.changes.deletedMultiArchManifests },
     { label: "Artifact manifests", count: summary.changes.deletedArtifactManifests },
     { label: "Signatures", count: summary.changes.deletedSignatures },
     { label: "Attestations", count: summary.changes.deletedAttestations },
@@ -258,8 +258,8 @@ function _describeManifestKind(manifestKind?: string): string {
   switch (manifestKind) {
     case ManifestKinds.imageManifest:
       return "image";
-    case ManifestKinds.crossArchManifest:
-      return "cross-arch";
+    case ManifestKinds.multiArchManifest:
+      return "multi-arch";
     case ManifestKinds.indexManifest:
       return "index";
     case ManifestKinds.signatureManifest:

@@ -52,7 +52,7 @@ test("buildCleanupSummary groups root decisions and carries live execution effec
           sourceDigest: "sha256:fully",
           memberVersionId: 101,
           memberDigest: "sha256:fully",
-          memberManifestKind: ManifestKinds.crossArchManifest,
+          memberManifestKind: ManifestKinds.multiArchManifest,
           hopsFromRoot: 0,
           memberRole: "root"
         },
@@ -81,7 +81,7 @@ test("buildCleanupSummary groups root decisions and carries live execution effec
         deletedTags: 1,
         deletedImages: 1,
         deletedIndexes: 0,
-        deletedCrossArchManifests: 1,
+        deletedMultiArchManifests: 1,
         deletedArtifactManifests: 0,
         deletedAttestations: 0,
         deletedSignatures: 0,
@@ -108,13 +108,13 @@ test("buildCleanupSummary groups root decisions and carries live execution effec
   assert.equal(summary.blockedRoots.length, 1);
   assert.deepEqual(summary.affectedManifests, [
     { digest: "sha256:child", manifestKind: ManifestKinds.imageManifest },
-    { digest: "sha256:fully", manifestKind: ManifestKinds.crossArchManifest }
+    { digest: "sha256:fully", manifestKind: ManifestKinds.multiArchManifest }
   ]);
   assert.deepEqual(summary.changes, {
     deletedTags: 1,
     deletedImages: 1,
     deletedIndexes: 0,
-    deletedCrossArchManifests: 1,
+    deletedMultiArchManifests: 1,
     deletedArtifactManifests: 0,
     deletedAttestations: 0,
     deletedSignatures: 0,
@@ -169,7 +169,7 @@ test("buildCleanupSummary trusts planner-facing direct target tags as already fi
         deletedTags: 1,
         deletedImages: 1,
         deletedIndexes: 0,
-        deletedCrossArchManifests: 0,
+        deletedMultiArchManifests: 0,
         deletedArtifactManifests: 0,
         deletedAttestations: 0,
         deletedSignatures: 0,

@@ -26,7 +26,7 @@ test("classifyManifestKind identifies single-platform image indexes as generic i
   );
 });
 
-test("classifyManifestKind identifies multi-platform indexes as cross-arch manifests", () => {
+test("classifyManifestKind identifies multi-platform indexes as multi-arch manifests", () => {
   assert.equal(
     classifyManifestKind({
       mediaType: "application/vnd.docker.distribution.manifest.list.v2+json",
@@ -45,7 +45,7 @@ test("classifyManifestKind identifies multi-platform indexes as cross-arch manif
         }
       ]
     }),
-    ManifestKinds.crossArchManifest
+    ManifestKinds.multiArchManifest
   );
 });
 

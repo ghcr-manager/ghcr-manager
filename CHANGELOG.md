@@ -27,7 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Cleanup dry-run output and GitHub step summaries were reworked to explain the plan more clearly, including a filters
   table and clearer counts for tags, images, and cross-arch manifests.
-- Informational manifest classification was tuned so only real multi-arch roots are labeled `cross_arch_manifest`, while
+- Informational manifest classification was tuned so only real multi-arch roots are labeled `multi_arch_manifest`, while
   helper-tagged indexes remain `index_manifest`.
 - `merge-run-artifacts` now uses a simpler current-run download flow with direct artifact download handling.
 - Cleanup selected-tag audit and DB-merge metadata handling were tightened alongside the summary/output refactor.

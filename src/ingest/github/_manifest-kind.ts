@@ -30,7 +30,7 @@ export function classifyManifestKind(document: _RegistryManifestDocument): Manif
     document.mediaType === "application/vnd.oci.image.index.v1+json" ||
     document.mediaType === "application/vnd.docker.distribution.manifest.list.v2+json"
   ) {
-    return _isCrossArchManifest(document) ? ManifestKinds.crossArchManifest : ManifestKinds.indexManifest;
+    return _isMultiArchManifest(document) ? ManifestKinds.multiArchManifest : ManifestKinds.indexManifest;
   }
 
   if (_isSignatureManifest(document)) {
@@ -52,7 +52,7 @@ export function classifyManifestKind(document: _RegistryManifestDocument): Manif
   return undefined;
 }
 
-function _isCrossArchManifest(document: _RegistryManifestDocument): boolean {
+function _isMultiArchManifest(document: _RegistryManifestDocument): boolean {
   const realPlatformDescriptorCount =
     document.manifests?.filter((descriptor) => {
       const architecture = descriptor.platform?.architecture;

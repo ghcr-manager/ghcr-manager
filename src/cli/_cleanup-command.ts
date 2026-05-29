@@ -133,7 +133,7 @@ function _loadSummaryChanges(
   deletedTags: number;
   deletedImages: number;
   deletedIndexes: number;
-  deletedCrossArchManifests: number;
+  deletedMultiArchManifests: number;
   deletedArtifactManifests: number;
   deletedAttestations: number;
   deletedSignatures: number;
@@ -184,7 +184,7 @@ function _loadSummaryChanges(
     deletedTags,
     deletedImages: countsByKind.get(ManifestKinds.imageManifest) ?? 0,
     deletedIndexes: countsByKind.get(ManifestKinds.indexManifest) ?? 0,
-    deletedCrossArchManifests: countsByKind.get(ManifestKinds.crossArchManifest) ?? 0,
+    deletedMultiArchManifests: countsByKind.get(ManifestKinds.multiArchManifest) ?? 0,
     deletedArtifactManifests: countsByKind.get(ManifestKinds.artifactManifest) ?? 0,
     deletedAttestations: countsByKind.get(ManifestKinds.attestationManifest) ?? 0,
     deletedSignatures: countsByKind.get(ManifestKinds.signatureManifest) ?? 0,

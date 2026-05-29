@@ -44,7 +44,7 @@ test("planner repository builds output decisions and protected roots", () => {
   writer.insertManifest({
     versionId: 3,
     digest: "sha256:blocked",
-    manifestKind: ManifestKinds.crossArchManifest,
+    manifestKind: ManifestKinds.multiArchManifest,
     mediaType: "application/vnd.oci.image.index.v1+json"
   });
   writer.insertTag({ tag: "blocked", versionId: 3 });
@@ -56,7 +56,7 @@ test("planner repository builds output decisions and protected roots", () => {
   writer.insertManifest({
     versionId: 4,
     digest: "sha256:keeper",
-    manifestKind: ManifestKinds.crossArchManifest,
+    manifestKind: ManifestKinds.multiArchManifest,
     mediaType: "application/vnd.oci.image.index.v1+json"
   });
   writer.insertPackageVersion({

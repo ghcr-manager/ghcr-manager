@@ -110,7 +110,7 @@ export const scenarios = {
     scanAssertions: [
       {
         tagNameKey: "keepTag",
-        expectedManifestKind: "cross_arch_manifest",
+        expectedManifestKind: "multi_arch_manifest",
         expectedManifestMediaType: "application/vnd.docker.distribution.manifest.list.v2+json",
         requireRoot: true
       }
@@ -132,7 +132,7 @@ export const scenarios = {
     scanAssertions: [
       {
         tagNameKey: "keepTag",
-        expectedManifestKind: "cross_arch_manifest",
+        expectedManifestKind: "multi_arch_manifest",
         expectedManifestMediaType: "application/vnd.oci.image.index.v1+json",
         requireRoot: true
       }
@@ -164,7 +164,7 @@ export const scenarios = {
     scanAssertions: [
       {
         tagNameKey: "keepTag",
-        expectedManifestKind: "cross_arch_manifest",
+        expectedManifestKind: "multi_arch_manifest",
         expectedManifestMediaType: "application/vnd.oci.image.index.v1+json",
         requireRoot: true
       }
@@ -173,7 +173,7 @@ export const scenarios = {
       {
         tagNameKey: "keepTag",
         requiredArtifactType: "application/vnd.dev.sigstore.bundle.v0.3+json",
-        requiredSubjectManifestKind: "cross_arch_manifest",
+        requiredSubjectManifestKind: "multi_arch_manifest",
         requireUntaggedRoots: true,
         minDistinctSubjectCount: 1,
         minSignatureRootCount: 1

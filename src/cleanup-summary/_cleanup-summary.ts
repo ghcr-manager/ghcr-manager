@@ -35,7 +35,7 @@ export interface CleanupSummaryChanges {
   deletedTags: number;
   deletedImages: number;
   deletedIndexes: number;
-  deletedCrossArchManifests: number;
+  deletedMultiArchManifests: number;
   deletedArtifactManifests: number;
   deletedAttestations: number;
   deletedSignatures: number;

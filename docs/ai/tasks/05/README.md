@@ -25,7 +25,7 @@ resulting in `artifacts/aicage__aicage-image-util.sqlite--cleanup-summary.md`.
 
 - Unreadable to most users.
 - Terms like these are not clear to users: `root`, `closure` and `manifest`.
-- Lacks core info the users care about: delete counts for images, cross-arch, tags
+- Lacks core info the users care about: delete counts for images, multi-arch, tags
 - Optional delete counts for signatures, artifacts would be nice
 - Layout inconsistent:
   - `Cleanup filter` should be tabular like the rest
@@ -54,10 +54,10 @@ one of the things in the GHCR - those are afaik all listed when viewing the GHCR
 Users will have basic Docker knowledge:
 
 - images
-- cross-arch manifests
+- multi-arch manifests
 - tags on either of them
 
-artifacts and signature is already optional - but a dev can derive that these are attached to images and/or cross-arch
+artifacts and signature is already optional - but a dev can derive that these are attached to images and/or multi-arch
 manifests.
 
 And anyone having those in his GHCR will wonder anyway why there are so many manifests for so few actual images.

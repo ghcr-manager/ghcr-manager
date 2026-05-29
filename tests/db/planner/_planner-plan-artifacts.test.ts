@@ -54,7 +54,7 @@ function _insertManifestVersion(
   writer.insertManifest({
     versionId,
     digest,
-    manifestKind: options.manifestKind ?? ManifestKinds.crossArchManifest,
+    manifestKind: options.manifestKind ?? ManifestKinds.multiArchManifest,
     mediaType: options.mediaType ?? "application/vnd.oci.image.index.v1+json"
   });
   if (options.tag) {
@@ -88,7 +88,7 @@ test("planner plan artifacts derive closure members and retained-root blocks", (
     {
       versionId: 2,
       digest: "sha256:root-b",
-      manifestKind: ManifestKinds.crossArchManifest,
+      manifestKind: ManifestKinds.multiArchManifest,
       reason: "delete-untagged",
       selectionMode: "delete-root"
     }
@@ -177,7 +177,7 @@ test("planner plan artifacts expand multi-arch child manifests and referrers int
     {
       versionId: 1,
       digest: "sha256:multiarch-root",
-      manifestKind: ManifestKinds.crossArchManifest,
+      manifestKind: ManifestKinds.multiArchManifest,
       reason: "delete-untagged",
       selectionMode: "delete-root"
     }
@@ -192,7 +192,7 @@ test("planner plan artifacts expand multi-arch child manifests and referrers int
       sourceDigest: "sha256:multiarch-root",
       memberVersionId: 1,
       memberDigest: "sha256:multiarch-root",
-      memberManifestKind: ManifestKinds.crossArchManifest,
+      memberManifestKind: ManifestKinds.multiArchManifest,
       hopsFromRoot: 0,
       memberRole: "root"
     },
@@ -258,7 +258,7 @@ test("planner plan artifacts do not treat sibling wrapper indexes as overlapping
     {
       versionId: 2,
       digest: "sha256:untagged-wrapper",
-      manifestKind: ManifestKinds.crossArchManifest,
+      manifestKind: ManifestKinds.multiArchManifest,
       reason: "delete-untagged",
       selectionMode: "delete-root"
     }
@@ -273,7 +273,7 @@ test("planner plan artifacts do not treat sibling wrapper indexes as overlapping
       sourceDigest: "sha256:untagged-wrapper",
       memberVersionId: 2,
       memberDigest: "sha256:untagged-wrapper",
-      memberManifestKind: ManifestKinds.crossArchManifest,
+      memberManifestKind: ManifestKinds.multiArchManifest,
       hopsFromRoot: 0,
       memberRole: "root"
     },
@@ -317,7 +317,7 @@ test("planner plan artifacts let younger retained roots block older delete candi
     {
       versionId: 1,
       digest: "sha256:old-delete-root",
-      manifestKind: ManifestKinds.crossArchManifest,
+      manifestKind: ManifestKinds.multiArchManifest,
       reason: "delete-tags-all-tags-selected",
       selectionMode: "delete-root"
     }

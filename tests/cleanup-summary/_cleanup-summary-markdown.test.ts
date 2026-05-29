@@ -19,7 +19,7 @@ test("renderCleanupSummaryMarkdown renders user-facing counts and truncates long
         {
           versionId: 101,
           digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-          manifestKind: ManifestKinds.crossArchManifest,
+          manifestKind: ManifestKinds.multiArchManifest,
           rootTags: ["release-amd64-test", "release-arm64-test", "release-debug-test"],
           matchedTags: ["release-amd64-test"],
           selectionMode: "delete-root",
@@ -32,7 +32,7 @@ test("renderCleanupSummaryMarkdown renders user-facing counts and truncates long
       untagOnlyRoots: [],
       blockedRoots: [],
       affectedManifests: [
-        { digest: "sha256:a", manifestKind: ManifestKinds.crossArchManifest },
+        { digest: "sha256:a", manifestKind: ManifestKinds.multiArchManifest },
         { digest: "sha256:b", manifestKind: ManifestKinds.imageManifest },
         { digest: "sha256:c", manifestKind: ManifestKinds.signatureManifest }
       ],
@@ -40,7 +40,7 @@ test("renderCleanupSummaryMarkdown renders user-facing counts and truncates long
         deletedTags: 3,
         deletedImages: 1,
         deletedIndexes: 1,
-        deletedCrossArchManifests: 1,
+        deletedMultiArchManifests: 1,
         deletedArtifactManifests: 0,
         deletedAttestations: 0,
         deletedSignatures: 1,
@@ -59,13 +59,13 @@ test("renderCleanupSummaryMarkdown renders user-facing counts and truncates long
   assert.match(markdown, /\| 📦 Package \| `acme\/example` \|/);
   assert.match(markdown, /\| 🔖 Deleted tags \| 3 \|/);
   assert.match(markdown, /\| 🖼️ Deleted images \| 1 \|/);
-  assert.match(markdown, /\| 📚 Deleted cross-arch manifests \| 1 \|/);
+  assert.match(markdown, /\| 📚 Deleted multi-arch manifests \| 1 \|/);
   assert.match(markdown, /\| 🧱 Deleted indexes \| 1 \|/);
   assert.match(markdown, /\| 📄 Deleted total \| 3 \|/);
   assert.match(markdown, /<summary>📦 Deleted item breakdown<\/summary>/);
   assert.match(markdown, /\| Images \| 1 \|/);
   assert.match(markdown, /\| Generic indexes \| 1 \|/);
-  assert.match(markdown, /\| Cross-arch manifests \| 1 \|/);
+  assert.match(markdown, /\| Multi-arch manifests \| 1 \|/);
   assert.match(markdown, /\| Signatures \| 1 \|/);
   assert.doesNotMatch(markdown, /\| Attestations \| 0 \|/);
   assert.doesNotMatch(markdown, /\| Artifact manifests \| 0 \|/);
@@ -83,7 +83,7 @@ test("renderCleanupSummaryMarkdown renders user-facing counts and truncates long
   assert.match(markdown, /Tag lists may be truncated for table width\./);
   assert.match(
     markdown,
-    /\| 101 \| cross-arch \| `sha256:aaaaaaaa\.\.\.aaaaaaaa` \| release-amd64-test, release-arm64-tes\.\.\. \| Delete item and descendants \|/
+    /\| 101 \| multi-arch \| `sha256:aaaaaaaa\.\.\.aaaaaaaa` \| release-amd64-test, release-arm64-tes\.\.\. \| Delete item and descendants \|/
   );
   assert.doesNotMatch(markdown, /<summary>🔗 Tags removed only<\/summary>/);
   assert.doesNotMatch(markdown, /<summary>🛡️ Blocked items<\/summary>/);
@@ -149,7 +149,7 @@ test("renderCleanupSummaryMarkdown renders blocked, tag-only, and live-effect de
         deletedTags: 1,
         deletedImages: 0,
         deletedIndexes: 0,
-        deletedCrossArchManifests: 0,
+        deletedMultiArchManifests: 0,
         deletedArtifactManifests: 0,
         deletedAttestations: 0,
         deletedSignatures: 0,
@@ -222,7 +222,7 @@ test("renderCleanupSummaryMarkdown notes when a root section is truncated", () =
         deletedTags: 1,
         deletedImages: 1,
         deletedIndexes: 0,
-        deletedCrossArchManifests: 0,
+        deletedMultiArchManifests: 0,
         deletedArtifactManifests: 0,
         deletedAttestations: 0,
         deletedSignatures: 0,
@@ -259,7 +259,7 @@ test("renderCleanupSummaryMarkdown does not show digest-tag helper tags in user-
         deletedTags: 0,
         deletedImages: 0,
         deletedIndexes: 0,
-        deletedCrossArchManifests: 0,
+        deletedMultiArchManifests: 0,
         deletedArtifactManifests: 0,
         deletedAttestations: 0,
         deletedSignatures: 0,
