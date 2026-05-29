@@ -49,9 +49,6 @@ CREATE TABLE IF NOT EXISTS manifests (
   config_media_type TEXT,
   subject_digest TEXT,
   annotations_json TEXT,
-  platform_os TEXT,
-  platform_architecture TEXT,
-  platform_variant TEXT,
   manifest_kind TEXT,
   CHECK(manifest_kind IN (
     'index_manifest',

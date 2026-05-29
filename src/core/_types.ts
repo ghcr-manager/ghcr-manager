@@ -32,11 +32,6 @@ export interface ManifestRecord {
   subjectDigest?: string;
   annotations?: Record<string, unknown>;
   manifestKind?: ManifestKind;
-  platform?: {
-    architecture?: string;
-    os?: string;
-    variant?: string;
-  };
 }
 
 export interface ManifestDescriptorRecord {

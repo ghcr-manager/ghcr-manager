@@ -68,10 +68,6 @@ function _insertVersionWithManifest(
       | typeof ManifestKinds.imageManifest
       | typeof ManifestKinds.signatureManifest;
     tag?: string;
-    platform?: {
-      os: string;
-      architecture: string;
-    };
   }
 ) {
   writer.insertPackageVersion({
@@ -83,8 +79,7 @@ function _insertVersionWithManifest(
     versionId,
     digest,
     mediaType: options.mediaType,
-    manifestKind: options.manifestKind,
-    platform: options.platform
+    manifestKind: options.manifestKind
   });
   if (options.tag) {
     writer.insertTag({
@@ -254,8 +249,7 @@ test("resolveTagSelectors resolves ghost image tags when all image index childre
     });
     _insertVersionWithManifest(writer, 203, "sha256:present-child", "2026-05-11T00:00:00.000Z", {
       mediaType: "application/vnd.oci.image.manifest.v1+json",
-      manifestKind: ManifestKinds.imageManifest,
-      platform: { os: "linux", architecture: "amd64" }
+      manifestKind: ManifestKinds.imageManifest
     });
     writer.rebuildManifestReachability();
     writer.markScanCompleted("2026-05-15T00:00:00.000Z");
@@ -298,8 +292,7 @@ test("resolveTagSelectors resolves partial image tags when some image index chil
     });
     _insertVersionWithManifest(writer, 202, "sha256:present-child", "2026-05-11T00:00:00.000Z", {
       mediaType: "application/vnd.oci.image.manifest.v1+json",
-      manifestKind: ManifestKinds.imageManifest,
-      platform: { os: "linux", architecture: "amd64" }
+      manifestKind: ManifestKinds.imageManifest
     });
     _insertVersionWithManifest(writer, 203, "sha256:ghost-index", "2026-05-12T00:00:00.000Z", {
       mediaType: "application/vnd.oci.image.index.v1+json",

@@ -133,6 +133,10 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
 - Manifest kind note:
   - `classifyManifestKind(document)` now sets `cross_arch_manifest` directly from the fetched index payload when more
     than one direct descriptor carries a real platform; single-platform indexes remain `index_manifest`
+- Manifest platform note:
+  - `manifests.platform_os|platform_architecture|platform_variant` were removed from schema and runtime code
+  - descriptor-scoped platform data remains on `manifest_descriptors`, which matches the actual source of truth in OCI
+    index documents
 - Scenario assertion note:
   - cleanup live-scenario definitions now expect real Docker/OCI multi-arch roots as `cross_arch_manifest`, not the
     older `image_index` label

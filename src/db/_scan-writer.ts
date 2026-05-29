@@ -72,9 +72,6 @@ export class ScanWriter {
         config_media_type,
         subject_digest,
         annotations_json,
-        platform_os,
-        platform_architecture,
-        platform_variant,
         manifest_kind
       )
       VALUES(
@@ -86,9 +83,6 @@ export class ScanWriter {
         @configMediaType,
         @subjectDigest,
         @annotationsJson,
-        @platformOs,
-        @platformArchitecture,
-        @platformVariant,
         @manifestKind
       )
     `);
@@ -176,9 +170,6 @@ export class ScanWriter {
       configMediaType: manifest.configMediaType ?? null,
       subjectDigest: manifest.subjectDigest ?? null,
       annotationsJson: manifest.annotations ? JSON.stringify(manifest.annotations) : null,
-      platformOs: manifest.platform?.os ?? null,
-      platformArchitecture: manifest.platform?.architecture ?? null,
-      platformVariant: manifest.platform?.variant ?? null,
       manifestKind: manifest.manifestKind ?? null
     });
   }
