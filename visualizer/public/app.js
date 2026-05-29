@@ -26,7 +26,10 @@ const elements = {
   detailPlatform: document.querySelector("#detail-platform"),
   detailArtifactType: document.querySelector("#detail-artifact-type"),
   detailSubject: document.querySelector("#detail-subject"),
-  detailTags: document.querySelector("#detail-tags")
+  detailTags: document.querySelector("#detail-tags"),
+  zoomIn: document.querySelector("#zoom-in"),
+  zoomOut: document.querySelector("#zoom-out"),
+  zoomFit: document.querySelector("#zoom-fit")
 };
 
 const state = {
@@ -38,8 +41,13 @@ const state = {
   selectedManifestDetails: null
 };
 
+const _ZOOM_STEP = 1.15;
+const _GRAPH_PADDING = 30;
+const _WHEEL_SENSITIVITY = 0.18;
+
 const cy = cytoscape({
   container: document.querySelector("#graph"),
+  wheelSensitivity: _WHEEL_SENSITIVITY,
   style: [
     {
       selector: "node",
@@ -135,6 +143,18 @@ elements.showRawJson.addEventListener("click", () => {
 
 elements.closeRawJson.addEventListener("click", () => {
   elements.rawJsonDialog.close();
+});
+
+elements.zoomIn.addEventListener("click", () => {
+  zoomBy(_ZOOM_STEP);
+});
+
+elements.zoomOut.addEventListener("click", () => {
+  zoomBy(1 / _ZOOM_STEP);
+});
+
+elements.zoomFit.addEventListener("click", () => {
+  cy.fit(undefined, _GRAPH_PADDING);
 });
 
 cy.on("tap", "node", async (event) => {
@@ -269,10 +289,10 @@ function renderGraph(graph, mode, options = {}) {
 
   const layoutOptions =
     mode === "expand"
-      ? { name: "preset", fit: true, padding: 30 }
+      ? { name: "preset", fit: true, padding: _GRAPH_PADDING }
       : preservePositions && newDigests.size === 0
-        ? { name: "preset", fit: true, padding: 30 }
-        : { name: "cose", animate: false, fit: true, padding: 30, randomize: false };
+        ? { name: "preset", fit: true, padding: _GRAPH_PADDING }
+        : { name: "cose", animate: false, fit: true, padding: _GRAPH_PADDING, randomize: false };
   cy.layout(layoutOptions).run();
   state.graphContext = nextContext;
   state.positionsByDigest = captureNodePositions();
@@ -504,6 +524,18 @@ function kindShortLabel(manifestKind) {
     default:
       return "unknown";
   }
+}
+
+function zoomBy(factor) {
+  const currentZoom = cy.zoom();
+  const nextZoom = currentZoom * factor;
+  cy.zoom({
+    level: nextZoom,
+    renderedPosition: {
+      x: cy.width() / 2,
+      y: cy.height() / 2
+    }
+  });
 }
 
 function kindBorderColor(manifestKind) {

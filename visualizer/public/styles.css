@@ -28,7 +28,24 @@ body {
 }
 
 .graph-panel {
+  position: relative;
   min-width: 0;
+}
+
+.graph-toolbar {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  z-index: 2;
+}
+
+.graph-toolbar button {
+  min-width: 3rem;
+  background: rgba(29, 79, 58, 0.92);
+  border-color: #1d4f3a;
+  box-shadow: 0 0.2rem 0.8rem rgba(16, 32, 23, 0.18);
 }
 
 #graph {
@@ -169,6 +186,11 @@ pre {
   .controls,
   .details {
     border: 0;
+  }
+
+  .graph-toolbar {
+    top: 0.75rem;
+    right: 0.75rem;
   }
 
   #graph {
