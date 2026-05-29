@@ -14,11 +14,13 @@ SELECT
   CASE WHEN COUNT(t.tag) > 0 THEN 1 ELSE 0 END AS is_tagged,
   CASE
     WHEN EXISTS (
+      -- TODO: This currently reflects planner root detection, not full graph ancestry.
+      -- Revisit when helper digest-tag edge semantics and cleanup root logic are redesigned.
       SELECT 1
-      FROM manifest_reachability mr
-      WHERE mr.scan_id = m.scan_id
-        AND mr.descendant_digest = m.digest
-        AND mr.min_distance > 0
+      FROM manifest_edges me
+      WHERE me.scan_id = m.scan_id
+        AND me.child_digest = m.digest
+        AND me.edge_kind != 'digest-tag-referrer'
     ) THEN 1
     ELSE 0
   END AS has_ancestor
