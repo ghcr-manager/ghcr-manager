@@ -6,6 +6,7 @@ export interface GraphNode {
   versionId: number;
   manifestKind: string | null;
   mediaType: string;
+  displayPlatform: string | null;
   artifactType: string | null;
   subjectDigest: string | null;
   tags: string[];

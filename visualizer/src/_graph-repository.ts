@@ -7,6 +7,9 @@ interface _ManifestRow {
   version_id: number;
   manifest_kind: string | null;
   media_type: string;
+  platform_os: string | null;
+  platform_architecture: string | null;
+  platform_variant: string | null;
   artifact_type: string | null;
   subject_digest: string | null;
   raw_json: string | null;
@@ -213,11 +216,33 @@ export class GraphRepository {
     const inClause = placeholders(digests.length);
     const payloadColumn = includePayload ? "payload.raw_json" : "NULL";
     const sql = `
+      WITH ranked_platforms AS (
+        SELECT
+          child_digest,
+          platform_os,
+          platform_architecture,
+          platform_variant,
+          ROW_NUMBER() OVER (
+            PARTITION BY child_digest
+            ORDER BY parent_digest
+          ) AS row_number
+        FROM manifest_descriptors
+        WHERE scan_id = ?
+          AND child_digest IN (${inClause})
+          AND (
+            platform_os IS NOT NULL
+            OR platform_architecture IS NOT NULL
+            OR platform_variant IS NOT NULL
+          )
+      )
       SELECT
         manifest.digest,
         manifest.version_id,
         manifest.manifest_kind,
         manifest.media_type,
+        platform.platform_os,
+        platform.platform_architecture,
+        platform.platform_variant,
         manifest.artifact_type,
         manifest.subject_digest,
         ${payloadColumn} AS raw_json,
@@ -230,11 +255,14 @@ export class GraphRepository {
         ON tag.scan_id = manifest.scan_id
        AND tag.version_id = manifest.version_id
        AND tag.is_digest_tag = 0
+      LEFT JOIN ranked_platforms platform
+        ON platform.child_digest = manifest.digest
+       AND platform.row_number = 1
       WHERE manifest.scan_id = ?
         AND manifest.digest IN (${inClause})
       ORDER BY manifest.digest, tag.tag
     `;
-    const rows = this.#database.prepare(sql).all(scanId, ...digests) as _ManifestRow[];
+    const rows = this.#database.prepare(sql).all(scanId, ...digests, scanId, ...digests) as _ManifestRow[];
     const manifests = new Map<string, ManifestDetails>();
 
     for (const row of rows) {
@@ -246,6 +274,7 @@ export class GraphRepository {
           versionId: row.version_id,
           manifestKind: row.manifest_kind,
           mediaType: row.media_type,
+          displayPlatform: _formatPlatform(row.platform_os, row.platform_architecture, row.platform_variant),
           artifactType: row.artifact_type,
           subjectDigest: row.subject_digest,
           tags: [],
@@ -261,4 +290,32 @@ export class GraphRepository {
 
     return manifests;
   }
+}
+
+function _formatPlatform(
+  os: string | null,
+  architecture: string | null,
+  variant: string | null
+): string | null {
+  const normalizedOs = _normalizePlatformPart(os);
+  const normalizedArchitecture = _normalizePlatformPart(architecture);
+  const normalizedVariant = _normalizePlatformPart(variant);
+  if (!normalizedOs && !normalizedArchitecture && !normalizedVariant) {
+    return null;
+  }
+
+  const platform = [normalizedOs, normalizedArchitecture].filter((value) => value).join("/");
+  if (normalizedVariant) {
+    return platform ? `${platform}/${normalizedVariant}` : normalizedVariant;
+  }
+
+  return platform || null;
+}
+
+function _normalizePlatformPart(value: string | null): string | null {
+  if (!value || value === "unknown") {
+    return null;
+  }
+
+  return value;
 }

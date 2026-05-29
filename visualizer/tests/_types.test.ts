@@ -9,6 +9,7 @@ test("visualizer graph types describe the expected graph payload shape", () => {
     versionId: 1,
     manifestKind: "multi_arch_manifest",
     mediaType: "application/vnd.oci.image.index.v1+json",
+    displayPlatform: null,
     artifactType: null,
     subjectDigest: null,
     tags: ["single"],

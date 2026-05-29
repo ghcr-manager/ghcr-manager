@@ -133,6 +133,23 @@ function _createRepository() {
   database
     .prepare("INSERT INTO manifest_edges(scan_id, parent_digest, child_digest, edge_kind) VALUES(?, ?, ?, ?)")
     .run(scanId, "sha256:child", "sha256:signature", "referrer");
+  database
+    .prepare(
+      `
+        INSERT INTO manifest_descriptors(
+          scan_id,
+          parent_digest,
+          child_digest,
+          media_type,
+          artifact_type,
+          platform_os,
+          platform_architecture,
+          platform_variant
+        )
+        VALUES(?, ?, ?, ?, NULL, ?, ?, NULL)
+      `
+    )
+    .run(scanId, "sha256:center", "sha256:child", "application/vnd.oci.image.manifest.v1+json", "linux", "amd64");
 
   const repository = new GraphRepository(database);
   const cleanup = () => {
@@ -162,12 +179,12 @@ test("graph repository returns visible intra-neighborhood edges and omits digest
     assert.equal(graph.centerDigest, "sha256:center");
     assert.deepEqual(
       graph.nodes
-        .map((node) => ({ digest: node.digest, tags: node.tags }))
+        .map((node) => ({ digest: node.digest, tags: node.tags, displayPlatform: node.displayPlatform }))
         .sort((left, right) => left.digest.localeCompare(right.digest)),
       [
-        { digest: "sha256:center", tags: ["single"] },
-        { digest: "sha256:child", tags: ["single-amd64"] },
-        { digest: "sha256:signature", tags: [] }
+        { digest: "sha256:center", tags: ["single"], displayPlatform: null },
+        { digest: "sha256:child", tags: ["single-amd64"], displayPlatform: "linux/amd64" },
+        { digest: "sha256:signature", tags: [], displayPlatform: null }
       ]
     );
     assert.deepEqual(graph.edges.map((edge) => edge.kind).sort(), ["image-child", "referrer", "referrer"]);
@@ -188,7 +205,19 @@ test("graph repository returns manifest details including payload", () => {
     const manifest = repository.getManifest("acme", "demo", undefined, "sha256:signature");
     assert.equal(manifest.manifestKind, "signature_manifest");
     assert.equal(manifest.rawJson, JSON.stringify({ kind: "signature" }));
+    assert.equal(manifest.displayPlatform, null);
     assert.deepEqual(manifest.tags, []);
+  } finally {
+    cleanup();
+  }
+});
+
+test("graph repository derives a display platform for image-manifest media types from descriptors", () => {
+  const { repository, cleanup } = _createRepository();
+  try {
+    const manifest = repository.getManifest("acme", "demo", undefined, "sha256:child");
+    assert.equal(manifest.mediaType, "application/vnd.oci.image.manifest.v1+json");
+    assert.equal(manifest.displayPlatform, "linux/amd64");
   } finally {
     cleanup();
   }

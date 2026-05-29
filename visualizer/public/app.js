@@ -21,6 +21,7 @@ const elements = {
   detailVersion: document.querySelector("#detail-version"),
   detailKind: document.querySelector("#detail-kind"),
   detailMediaType: document.querySelector("#detail-media-type"),
+  detailPlatform: document.querySelector("#detail-platform"),
   detailArtifactType: document.querySelector("#detail-artifact-type"),
   detailSubject: document.querySelector("#detail-subject"),
   detailTags: document.querySelector("#detail-tags")
@@ -211,6 +212,7 @@ async function loadManifestDetails(digest) {
   elements.detailVersion.textContent = String(details.versionId);
   elements.detailKind.textContent = details.manifestKind ?? "-";
   elements.detailMediaType.textContent = details.mediaType;
+  elements.detailPlatform.textContent = details.displayPlatform ?? "-";
   elements.detailArtifactType.textContent = details.artifactType ?? "-";
   elements.detailSubject.textContent = details.subjectDigest ?? "-";
   elements.detailTags.textContent = details.tags.join(", ") || "-";
@@ -276,7 +278,13 @@ function renderGraph(graph, mode, options = {}) {
 
 function buildNodeLabel(node) {
   const primaryLine = kindLabel(node);
-  const secondaryLines = node.tags.length > 0 ? [node.tags[0]] : [`#${node.versionId}`];
+  const secondaryLines = [];
+
+  if (node.displayPlatform) {
+    secondaryLines.push(node.displayPlatform);
+  }
+
+  secondaryLines.push(node.tags.length > 0 ? node.tags[0] : `#${node.versionId}`);
 
   if (node.tags.length > 1) {
     secondaryLines.push(node.tags.slice(1).join(" | "));

@@ -151,6 +151,8 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
   - `manifests.platform_os|platform_architecture|platform_variant` were removed from schema and runtime code
   - descriptor-scoped platform data remains on `manifest_descriptors`, which matches the actual source of truth in OCI
     index documents
+  - the visualizer now derives one display platform tuple for image-manifest media types from `manifest_descriptors` and
+    shows it on image nodes plus the details panel; this is intentionally a display heuristic, not new source truth
 - Scenario assertion note:
   - cleanup live-scenario definitions now expect real Docker/OCI multi-arch roots as `multi_arch_manifest`, not the
     older `image_index` label
