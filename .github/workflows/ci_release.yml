@@ -53,6 +53,10 @@ jobs:
             echo "package.json version must match tag ${GITHUB_REF_NAME}" >&2
             exit 1
           fi
+          if ! grep -q "\"version\": \"${GITHUB_REF_NAME}\"" visualizer/package.json; then
+            echo "visualizer/package.json version must match tag ${GITHUB_REF_NAME}" >&2
+            exit 1
+          fi
 
       - name: Verify changelog contains the release version
         run: |
@@ -82,8 +86,8 @@ jobs:
       packages: write
     secrets: inherit
 
-  publish-npm:
-    name: Publish npm package
+  publish-npm-packages:
+    name: Publish npm packages
     needs:
       - verify-release-refs
       - test-scenario-executor-matrix
@@ -103,6 +107,7 @@ jobs:
           node-version: "24"
           cache: npm
           registry-url: https://registry.npmjs.org
+          package-manager-cache: false
 
       - name: Install dependencies
         run: |
@@ -112,13 +117,18 @@ jobs:
         run: |
           npm test
 
-      - name: Build package
+      - name: Build packages
         run: |
           npm run build
+          npm run build --workspace visualizer
 
-      - name: Publish to npm
+      - name: Publish ghcr-manager to npm
         run: |
           npm publish --provenance --access public
+
+      - name: Publish ghcr-manager-visualizer to npm
+        run: |
+          npm publish --workspace visualizer --provenance --access public
 
   release:
     name: Publish GitHub release
@@ -126,7 +136,7 @@ jobs:
       - verify-release-refs
       - test-scenario-executor-matrix
       - test-user-owner-cleanup
-      - publish-npm
+      - publish-npm-packages
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
