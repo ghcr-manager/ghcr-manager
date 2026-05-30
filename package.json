@@ -9,7 +9,7 @@
     "type": "git",
     "url": "https://github.com/gh-workflow/ghcr-manager"
   },
-  "version": "0.9.8",
+  "version": "0.9.9",
   "type": "module",
   "workspaces": [
     "visualizer"

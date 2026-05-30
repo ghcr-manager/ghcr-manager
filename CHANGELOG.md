@@ -7,6 +7,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.9.9] - 2026-05-30
+
+### Added
+
+- Added a local manifest-graph visualizer with browser UI for `ghcr-manager` SQLite databases, including manifest
+  details, zoom controls, one-hop expansion, and scan-to-scan compare mode.
+- Added a separately publishable npm package, `ghcr-manager-visualizer`, plus user-facing visualizer documentation.
+- Added repo-local manual visualizer demo scripts for seeding and updating GHCR packages during graph investigation.
+
+### Changed
+
+- Manifest platform display now derives from descriptor data in the visualizer instead of relying on manifest-level
+  platform fields.
+- Cross-architecture terminology is now consistently named `multi-arch` across runtime, tests, and docs.
+
+### Fixed
+
+- Fixed digest-tag helper-edge direction and root-detection behavior so helper-tagged artifacts no longer interfere with
+  normal cleanup root semantics.
+
 ## [0.9.8] - 2026-05-29
 
 ### Removed

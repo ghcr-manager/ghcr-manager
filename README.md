@@ -32,7 +32,7 @@ jobs:
 
       - name: Preview GHCR cleanup
         id: ghcr-manager
-        uses: gh-workflow/ghcr-manager@0.9.8
+        uses: gh-workflow/ghcr-manager@0.9.9
         with:
           command: cleanup
           token: ${{ github.token }}
@@ -69,7 +69,7 @@ The action supports two commands:
 ### Preview cleanup
 
 ```yaml
-- uses: gh-workflow/ghcr-manager@0.9.8
+- uses: gh-workflow/ghcr-manager@0.9.9
   with:
     command: cleanup
     token: ${{ github.token }}
@@ -90,7 +90,7 @@ The action supports two commands:
 ### Apply cleanup
 
 ```yaml
-- uses: gh-workflow/ghcr-manager@0.9.8
+- uses: gh-workflow/ghcr-manager@0.9.9
   with:
     command: cleanup
     token: ${{ github.token }}
@@ -109,7 +109,7 @@ Note: the second scan only runs if cleanup actually makes changes.
 ### Scan one package
 
 ```yaml
-- uses: gh-workflow/ghcr-manager@0.9.8
+- uses: gh-workflow/ghcr-manager@0.9.9
   with:
     command: scan
     token: ${{ github.token }}
