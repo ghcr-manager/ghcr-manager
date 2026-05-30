@@ -54,8 +54,7 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
   - digest-selector scenarios require repo dependencies before pre-scan and digest resolution helper scripts run
 - Manual visual demo note:
   - repo-local scripts under `tools/tests/visualizer/` now provide a before/after GHCR package mutation flow that can
-    show unchanged, removed, and added graph branches plus a removed tag on a retained manifest in one visualizer
-    compare
+    show unchanged, removed, and added graph branches in one visualizer compare
 - Scenario workflow concurrency note:
   - cleanup scenario execution is serialized per `scenario + executor`
   - user-owner cleanup now has its own dedicated concurrency group because it mutates one fixed package

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* global Buffer, fetch, process, URL */
+/* global fetch, process, URL */
 
 import { mkdtempSync, rmSync, cpSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -143,41 +143,35 @@ export function buildAndPushImage(imageRef, tag, payloadLabel) {
 }
 
 export async function publishSyntheticIndex(options) {
-  const token = await loadRegistryPushToken(
-    options.owner,
-    options.packageName,
-    options.registryUsername,
-    options.token
+  const targetReference = `${options.imageRef ?? `ghcr.io/${options.owner}/${options.packageName}`}:${options.tag}`;
+  const memberReferences = options.members.map(
+    (member) => `${options.imageRef ?? `ghcr.io/${options.owner}/${options.packageName}`}@${member.digest}`
   );
-  const indexJson = {
-    schemaVersion: 2,
-    mediaType: "application/vnd.oci.image.index.v1+json",
-    manifests: options.members.map((member) => ({
-      mediaType: "application/vnd.oci.image.manifest.v1+json",
-      digest: member.digest,
-      size: 702,
-      platform: {
-        architecture: member.architecture,
-        os: member.os
-      }
-    }))
-  };
-  const response = await fetch(
-    `${_registryBaseUrl}/v2/${encodeURIComponent(options.owner)}/${encodeURIComponent(options.packageName)}/manifests/${encodeURIComponent(options.tag)}`,
-    {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/vnd.oci.image.index.v1+json"
-      },
-      body: JSON.stringify(indexJson)
-    }
-  );
-  if (!response.ok) {
-    throw new Error(
-      `failed to publish synthetic index '${options.tag}': status ${response.status} - ${await loadMessage(response)}`
+
+  execFileSync("docker", ["manifest", "create", targetReference, ...memberReferences], {
+    stdio: "inherit"
+  });
+
+  for (const [index, member] of options.members.entries()) {
+    execFileSync(
+      "docker",
+      [
+        "manifest",
+        "annotate",
+        targetReference,
+        memberReferences[index],
+        "--os",
+        member.os,
+        "--arch",
+        member.architecture
+      ],
+      { stdio: "inherit" }
     );
   }
+
+  execFileSync("docker", ["manifest", "push", "--purge", targetReference], {
+    stdio: "inherit"
+  });
 }
 
 export function inspectDigest(reference) {
@@ -191,44 +185,6 @@ export function inspectDigest(reference) {
   }
 
   return digest;
-}
-
-export function copyTag(imageRef, sourceTag, targetTag) {
-  execFileSync(
-    "docker",
-    ["buildx", "imagetools", "create", "--tag", `${imageRef}:${targetTag}`, `${imageRef}:${sourceTag}`],
-    { stdio: "inherit" }
-  );
-}
-
-export function runGhcrManagerCleanup(options) {
-  const workDirectory = mkdtempSync(join(tmpdir(), "ghcr-visual-demo-cleanup-"));
-  const databasePath = join(workDirectory, "cleanup.sqlite");
-  const cliPath = resolve(process.cwd(), "src", "cli", "index.ts");
-  try {
-    execFileSync(
-      "node",
-      [
-        "--import",
-        "tsx",
-        cliPath,
-        "cleanup",
-        "--db",
-        databasePath,
-        "--owner",
-        options.owner,
-        "--package",
-        options.packageName,
-        "--token",
-        options.token,
-        "--delete-tag",
-        options.deleteTag
-      ],
-      { stdio: "inherit" }
-    );
-  } finally {
-    rmSync(workDirectory, { recursive: true, force: true });
-  }
 }
 
 function createImageContext(payloadLabel) {
@@ -257,30 +213,6 @@ async function loadOwnerPathSegment(owner, token) {
   }
 
   throw new Error(`unsupported owner type for ${owner}: ${payload?.type ?? "unknown"}`);
-}
-
-async function loadRegistryPushToken(owner, packageName, registryUsername, token) {
-  const scope = `repository:${owner}/${packageName}:pull,push`;
-  const url = new URL("/token", _registryBaseUrl);
-  url.searchParams.set("service", "ghcr.io");
-  url.searchParams.set("scope", scope);
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Basic ${Buffer.from(`${registryUsername}:${token}`).toString("base64")}`
-    }
-  });
-  if (!response.ok) {
-    throw new Error(
-      `failed to load registry push token for ${owner}/${packageName}: status ${response.status} - ${await loadMessage(response)}`
-    );
-  }
-
-  const payload = await response.json();
-  if (typeof payload?.token !== "string" || payload.token.length === 0) {
-    throw new Error(`registry push token response for ${owner}/${packageName} did not contain a token`);
-  }
-
-  return payload.token;
 }
 
 function buildGitHubHeaders(token) {

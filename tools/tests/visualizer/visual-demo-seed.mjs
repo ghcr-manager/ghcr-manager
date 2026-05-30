@@ -3,7 +3,6 @@
 
 import {
   buildAndPushImage,
-  copyTag,
   deletePackageIfPresent,
   parseArgs,
   publishSyntheticIndex
@@ -13,7 +12,7 @@ const _helpText = `
 Seed the manual GHCR visual compare demo package.
 
 This resets the target package and creates the initial graph:
-- shared image tags: visual-demo--keep-image, visual-demo--drop-tag
+- shared image tag: visual-demo--keep-image
 - kept image tag: visual-demo--kept-leaf
 - kept multi-arch tag: visual-demo--keep-multiarch
 - removed-later multi-arch tag: visual-demo--drop-multiarch
@@ -22,9 +21,14 @@ Usage:
   node tools/tests/visualizer/visual-demo-seed.mjs <owner> <package-name> <registry-username> <token>
 
 Token with gh:
+  gh auth refresh -h github.com -s read:packages -s write:packages -s delete:packages
   TOKEN="$(gh auth token)"
+  echo "$TOKEN" | docker login ghcr.io -u <registry-username> --password-stdin
 
 Example:
+  gh auth refresh -h github.com -s read:packages -s write:packages -s delete:packages
+  TOKEN="$(gh auth token)"
+  echo "$TOKEN" | docker login ghcr.io -u my-username --password-stdin
   node tools/tests/visualizer/visual-demo-seed.mjs ghcr-manager-test my-visual-demo my-username "$TOKEN"
 
 How to use:
@@ -40,7 +44,6 @@ const options = parseArgs(_helpText);
 await deletePackageIfPresent(options.owner, options.packageName, options.token);
 
 const sharedImageDigest = buildAndPushImage(options.imageRef, "visual-demo--keep-image", "visual demo shared image");
-copyTag(options.imageRef, "visual-demo--keep-image", "visual-demo--drop-tag");
 const keptLeafDigest = buildAndPushImage(options.imageRef, "visual-demo--kept-leaf", "visual demo kept leaf");
 
 await publishSyntheticIndex({
@@ -72,7 +75,6 @@ process.stdout.write(
     `Seeded ghcr.io/${options.owner}/${options.packageName}`,
     "Tags:",
     "  - visual-demo--keep-image",
-    "  - visual-demo--drop-tag",
     "  - visual-demo--kept-leaf",
     "  - visual-demo--keep-multiarch",
     "  - visual-demo--drop-multiarch"
