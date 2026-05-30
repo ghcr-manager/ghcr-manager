@@ -22,15 +22,25 @@ test("visualizer server serves graph API responses from a read-only database", a
       host: "127.0.0.1",
       port: 0
     });
-    const response = await fetch(`${server.url}/api/packages/acme/demo/graph?center_digest=sha256:center&depth=1`);
-    const body = (await response.json()) as { centerDigest: string; nodes: Array<{ digest: string }> };
+    const response = await fetch(
+      `${server.url}/api/packages/acme/demo/graph?scan_id=1&compare_scan_id=2&center_digest=sha256:center&depth=1`
+    );
+    const body = (await response.json()) as {
+      centerDigest: string;
+      nodes: Array<{ digest: string; changeStatus: string }>;
+    };
     assert.equal(response.status, 200);
     assert.equal(body.centerDigest, "sha256:center");
-    assert.deepEqual(body.nodes.map((node) => node.digest).sort(), [
-      "sha256:center",
-      "sha256:child",
-      "sha256:signature"
-    ]);
+    assert.deepEqual(
+      body.nodes
+        .map((node) => ({ digest: node.digest, changeStatus: node.changeStatus }))
+        .sort((left, right) => left.digest.localeCompare(right.digest)),
+      [
+        { digest: "sha256:arm64", changeStatus: "added" },
+        { digest: "sha256:center", changeStatus: "unchanged" },
+        { digest: "sha256:child", changeStatus: "removed" }
+      ]
+    );
   } finally {
     if (server) {
       await server.close();
@@ -52,7 +62,7 @@ function initializeSchema(database: Database.Database): void {
 }
 
 function seedDatabase(database: Database.Database): void {
-  const scanId = Number(
+  const olderScanId = Number(
     database
       .prepare(
         `
@@ -70,7 +80,7 @@ function seedDatabase(database: Database.Database): void {
         `
       )
       .run(
-        "scan-uuid",
+        "scan-uuid-older",
         "acme",
         "demo",
         JSON.stringify({ visibility: "private" }),
@@ -78,19 +88,51 @@ function seedDatabase(database: Database.Database): void {
         "2026-05-29T10:00:00.000Z"
       ).lastInsertRowid
   );
+  const newerScanId = Number(
+    database
+      .prepare(
+        `
+          INSERT INTO package_scans(
+            scan_uuid,
+            owner,
+            package_name,
+            package_metadata_json,
+            github_actions_run_url,
+            scan_started_at,
+            scan_completed_at,
+            status
+          )
+          VALUES(?, ?, ?, ?, NULL, ?, ?, 'completed')
+        `
+      )
+      .run(
+        "scan-uuid-newer",
+        "acme",
+        "demo",
+        JSON.stringify({ visibility: "private" }),
+        "2026-05-30T10:00:00.000Z",
+        "2026-05-30T10:00:00.000Z"
+      ).lastInsertRowid
+  );
 
   database
     .prepare("INSERT INTO package_versions(scan_id, version_id, created_at, updated_at) VALUES(?, ?, ?, ?)")
-    .run(scanId, 1, "2026-05-29T10:00:00.000Z", "2026-05-29T10:00:00.000Z");
+    .run(olderScanId, 1, "2026-05-29T10:00:00.000Z", "2026-05-29T10:00:00.000Z");
   database
     .prepare("INSERT INTO package_versions(scan_id, version_id, created_at, updated_at) VALUES(?, ?, ?, ?)")
-    .run(scanId, 2, "2026-05-29T10:00:00.000Z", "2026-05-29T10:00:00.000Z");
+    .run(olderScanId, 2, "2026-05-29T10:00:00.000Z", "2026-05-29T10:00:00.000Z");
   database
     .prepare("INSERT INTO package_versions(scan_id, version_id, created_at, updated_at) VALUES(?, ?, ?, ?)")
-    .run(scanId, 3, "2026-05-29T10:00:00.000Z", "2026-05-29T10:00:00.000Z");
+    .run(newerScanId, 1, "2026-05-30T10:00:00.000Z", "2026-05-30T10:00:00.000Z");
+  database
+    .prepare("INSERT INTO package_versions(scan_id, version_id, created_at, updated_at) VALUES(?, ?, ?, ?)")
+    .run(newerScanId, 3, "2026-05-30T10:00:00.000Z", "2026-05-30T10:00:00.000Z");
   database
     .prepare("INSERT INTO tags(scan_id, tag, version_id, is_digest_tag) VALUES(?, ?, ?, ?)")
-    .run(scanId, "single", 1, 0);
+    .run(olderScanId, "single", 1, 0);
+  database
+    .prepare("INSERT INTO tags(scan_id, tag, version_id, is_digest_tag) VALUES(?, ?, ?, ?)")
+    .run(newerScanId, "single", 1, 0);
   database
     .prepare(
       `
@@ -108,7 +150,7 @@ function seedDatabase(database: Database.Database): void {
         VALUES(?, ?, ?, ?, NULL, NULL, NULL, NULL, ?)
       `
     )
-    .run(scanId, 1, "sha256:center", "application/vnd.oci.image.index.v1+json", "multi_arch_manifest");
+    .run(olderScanId, 1, "sha256:center", "application/vnd.oci.image.index.v1+json", "multi_arch_manifest");
   database
     .prepare(
       `
@@ -126,7 +168,7 @@ function seedDatabase(database: Database.Database): void {
         VALUES(?, ?, ?, ?, NULL, NULL, NULL, NULL, ?)
       `
     )
-    .run(scanId, 2, "sha256:child", "application/vnd.oci.image.manifest.v1+json", "image_manifest");
+    .run(olderScanId, 2, "sha256:child", "application/vnd.oci.image.manifest.v1+json", "image_manifest");
   database
     .prepare(
       `
@@ -141,23 +183,34 @@ function seedDatabase(database: Database.Database): void {
           annotations_json,
           manifest_kind
         )
-        VALUES(?, ?, ?, ?, NULL, NULL, ?, NULL, ?)
+        VALUES(?, ?, ?, ?, NULL, NULL, NULL, NULL, ?)
       `
     )
-    .run(
-      scanId,
-      3,
-      "sha256:signature",
-      "application/vnd.oci.image.manifest.v1+json",
-      "sha256:center",
-      "signature_manifest"
-    );
+    .run(newerScanId, 1, "sha256:center", "application/vnd.oci.image.index.v1+json", "multi_arch_manifest");
+  database
+    .prepare(
+      `
+        INSERT INTO manifests(
+          scan_id,
+          version_id,
+          digest,
+          media_type,
+          artifact_type,
+          config_media_type,
+          subject_digest,
+          annotations_json,
+          manifest_kind
+        )
+        VALUES(?, ?, ?, ?, NULL, NULL, NULL, NULL, ?)
+      `
+    )
+    .run(newerScanId, 3, "sha256:arm64", "application/vnd.oci.image.manifest.v1+json", "image_manifest");
   database
     .prepare("INSERT INTO manifest_edges(scan_id, parent_digest, child_digest, edge_kind) VALUES(?, ?, ?, ?)")
-    .run(scanId, "sha256:center", "sha256:child", "image-child");
+    .run(olderScanId, "sha256:center", "sha256:child", "image-child");
   database
     .prepare("INSERT INTO manifest_edges(scan_id, parent_digest, child_digest, edge_kind) VALUES(?, ?, ?, ?)")
-    .run(scanId, "sha256:signature", "sha256:center", "referrer");
+    .run(newerScanId, "sha256:center", "sha256:arm64", "image-child");
 }
 
 function resolveSqlRoot(): string {

@@ -1,4 +1,10 @@
 export type GraphEdgeKind = "image-child" | "referrer" | "digest-tag-referrer";
+export type ChangeStatus = "unchanged" | "added" | "removed";
+
+export interface GraphTag {
+  name: string;
+  changeStatus: ChangeStatus;
+}
 
 export interface GraphNode {
   id: string;
@@ -11,7 +17,8 @@ export interface GraphNode {
   displayPlatform: string | null;
   artifactType: string | null;
   subjectDigest: string | null;
-  tags: string[];
+  tags: GraphTag[];
+  changeStatus: ChangeStatus;
 }
 
 export interface GraphEdge {
@@ -25,6 +32,7 @@ export interface GraphResponse {
   owner: string;
   packageName: string;
   scanId: number;
+  compareScanId?: number;
   centerDigest: string;
   depth: number;
   nodes: GraphNode[];
@@ -35,6 +43,7 @@ export interface ManifestResolution {
   owner: string;
   packageName: string;
   scanId: number;
+  compareScanId?: number;
   digest: string;
   versionId: number;
   manifestKind: string | null;

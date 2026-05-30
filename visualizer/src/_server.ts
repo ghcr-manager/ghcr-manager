@@ -104,20 +104,23 @@ function _handleApi(repository: GraphRepository, url: URL): unknown {
   const owner = decodeURIComponent(segments[2]);
   const packageName = decodeURIComponent(segments[3]);
   const scanId = _parseOptionalInteger(url.searchParams.get("scan_id"));
+  const compareScanId = _parseOptionalInteger(url.searchParams.get("compare_scan_id"));
 
   if (segments.length === 6 && segments[4] === "scans" && segments[5] === "latest") {
     return { scanId: repository.resolveLatestScanId(owner, packageName) };
   }
   if (segments.length === 5 && segments[4] === "manifests" && url.searchParams.has("digest")) {
-    return repository.resolveManifest(owner, packageName, scanId, {
+    return repository.resolveManifest(owner, packageName, scanId, compareScanId, {
       digest: url.searchParams.get("digest") ?? undefined
     });
   }
   if (segments.length === 5 && segments[4] === "manifests" && url.searchParams.has("tag")) {
-    return repository.resolveManifest(owner, packageName, scanId, { tag: url.searchParams.get("tag") ?? undefined });
+    return repository.resolveManifest(owner, packageName, scanId, compareScanId, {
+      tag: url.searchParams.get("tag") ?? undefined
+    });
   }
   if (segments.length === 6 && segments[4] === "manifests") {
-    return repository.getManifest(owner, packageName, scanId, decodeURIComponent(segments[5]));
+    return repository.getManifest(owner, packageName, scanId, compareScanId, decodeURIComponent(segments[5]));
   }
   if (segments.length === 5 && segments[4] === "graph") {
     const centerDigest = url.searchParams.get("center_digest");
@@ -129,6 +132,7 @@ function _handleApi(repository: GraphRepository, url: URL): unknown {
       owner,
       packageName,
       scanId,
+      compareScanId,
       centerDigest,
       _parseOptionalInteger(url.searchParams.get("depth")) ?? 1
     );

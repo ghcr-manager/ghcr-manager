@@ -1,8 +1,9 @@
 import type Database from "better-sqlite3";
 import { placeholders } from "./_sql-placeholders.js";
-import type { GraphEdge, GraphResponse, ManifestDetails, ManifestResolution } from "./_types.js";
+import type { ChangeStatus, GraphEdge, GraphResponse, ManifestDetails, ManifestResolution } from "./_types.js";
 
 interface _ManifestRow {
+  scan_id: number;
   digest: string;
   version_id: number;
   created_at: string;
@@ -22,6 +23,19 @@ interface _EdgeRow {
   parent_digest: string;
   child_digest: string;
   edge_kind: GraphEdge["kind"];
+}
+
+interface _ScanOrderRow {
+  scan_id: number;
+  scan_completed_at: string;
+}
+
+interface _ResolvedScans {
+  scanId: number;
+  compareScanId?: number;
+  scanIds: number[];
+  newerScanId: number;
+  olderScanId?: number;
 }
 
 export class GraphRepository {
@@ -79,31 +93,51 @@ export class GraphRepository {
     owner: string,
     packageName: string,
     scanId: number | undefined,
+    compareScanId: number | undefined,
     args: { digest?: string; tag?: string }
   ): ManifestResolution {
-    const resolvedScanId = this.resolveScanId(owner, packageName, scanId);
-    const digest = args.digest ?? this.#resolveDigestByTag(resolvedScanId, args.tag);
-    const node = this.#readManifestMap(resolvedScanId, [digest], true).get(digest);
+    const resolvedScans = this.#resolveScans(owner, packageName, scanId, compareScanId);
+    const digest = args.digest ?? this.#resolveDigestByTag(resolvedScans.scanId, args.tag);
+    const node = this.#readManifestMap(
+      resolvedScans.scanIds,
+      [digest],
+      true,
+      resolvedScans.newerScanId,
+      resolvedScans.olderScanId
+    ).get(digest);
     if (!node) {
-      throw new Error(`manifest ${digest} was not found in ${owner}/${packageName} scan ${resolvedScanId}`);
+      throw new Error(`manifest ${digest} was not found in ${owner}/${packageName}`);
     }
 
     return {
       owner,
       packageName,
-      scanId: resolvedScanId,
+      scanId: resolvedScans.scanId,
+      compareScanId: resolvedScans.compareScanId,
       digest: node.digest,
       versionId: node.versionId,
       manifestKind: node.manifestKind,
-      tags: node.tags
+      tags: node.tags.map((tag) => tag.name)
     };
   }
 
-  getManifest(owner: string, packageName: string, scanId: number | undefined, digest: string): ManifestDetails {
-    const resolvedScanId = this.resolveScanId(owner, packageName, scanId);
-    const node = this.#readManifestMap(resolvedScanId, [digest], true).get(digest);
+  getManifest(
+    owner: string,
+    packageName: string,
+    scanId: number | undefined,
+    compareScanId: number | undefined,
+    digest: string
+  ): ManifestDetails {
+    const resolvedScans = this.#resolveScans(owner, packageName, scanId, compareScanId);
+    const node = this.#readManifestMap(
+      resolvedScans.scanIds,
+      [digest],
+      true,
+      resolvedScans.newerScanId,
+      resolvedScans.olderScanId
+    ).get(digest);
     if (!node) {
-      throw new Error(`manifest ${digest} was not found in ${owner}/${packageName} scan ${resolvedScanId}`);
+      throw new Error(`manifest ${digest} was not found in ${owner}/${packageName}`);
     }
 
     return node;
@@ -113,16 +147,17 @@ export class GraphRepository {
     owner: string,
     packageName: string,
     scanId: number | undefined,
+    compareScanId: number | undefined,
     centerDigest: string,
     depth: number
   ): GraphResponse {
-    const resolvedScanId = this.resolveScanId(owner, packageName, scanId);
+    const resolvedScans = this.#resolveScans(owner, packageName, scanId, compareScanId);
     const normalizedDepth = Math.max(0, depth);
     const visited = new Set<string>([centerDigest]);
     let frontier = new Set<string>([centerDigest]);
 
     for (let currentDepth = 0; currentDepth < normalizedDepth && frontier.size > 0; currentDepth += 1) {
-      const edgeRows = this.#readAdjacentEdges(resolvedScanId, [...frontier]);
+      const edgeRows = this.#readAdjacentEdges(resolvedScans.scanIds, [...frontier]);
       const nextFrontier = new Set<string>();
 
       for (const row of edgeRows) {
@@ -139,25 +174,75 @@ export class GraphRepository {
       frontier = nextFrontier;
     }
 
-    const nodes = [...this.#readManifestMap(resolvedScanId, [...visited], false).values()];
-    const edges = this.#readVisibleEdges(resolvedScanId, [...visited]).map((row) => ({
+    const nodes = [
+      ...this.#readManifestMap(
+        resolvedScans.scanIds,
+        [...visited],
+        false,
+        resolvedScans.newerScanId,
+        resolvedScans.olderScanId
+      ).values()
+    ];
+    const edges = this.#readVisibleEdges(resolvedScans.scanIds, [...visited]).map((row) => ({
       id: `${row.parent_digest}|${row.child_digest}|${row.edge_kind}`,
       from: row.parent_digest,
       to: row.child_digest,
       kind: row.edge_kind
     }));
     if (!nodes.some((node) => node.digest === centerDigest)) {
-      throw new Error(`manifest ${centerDigest} was not found in ${owner}/${packageName} scan ${resolvedScanId}`);
+      throw new Error(`manifest ${centerDigest} was not found in ${owner}/${packageName}`);
     }
 
     return {
       owner,
       packageName,
-      scanId: resolvedScanId,
+      scanId: resolvedScans.scanId,
+      compareScanId: resolvedScans.compareScanId,
       centerDigest,
       depth: normalizedDepth,
       nodes,
       edges: edges.sort((left, right) => left.id.localeCompare(right.id))
+    };
+  }
+
+  #resolveScans(
+    owner: string,
+    packageName: string,
+    scanId: number | undefined,
+    compareScanId: number | undefined
+  ): _ResolvedScans {
+    const resolvedScanId = this.resolveScanId(owner, packageName, scanId);
+    if (compareScanId === undefined || compareScanId === resolvedScanId) {
+      return {
+        scanId: resolvedScanId,
+        scanIds: [resolvedScanId],
+        newerScanId: resolvedScanId
+      };
+    }
+
+    const resolvedCompareScanId = this.resolveScanId(owner, packageName, compareScanId);
+    const rows = this.#database
+      .prepare(
+        `
+          SELECT scan_id, scan_completed_at
+          FROM package_scans
+          WHERE owner = ?
+            AND package_name = ?
+            AND scan_id IN (?, ?)
+          ORDER BY scan_completed_at ASC, scan_id ASC
+        `
+      )
+      .all(owner, packageName, resolvedScanId, resolvedCompareScanId) as _ScanOrderRow[];
+    if (rows.length !== 2) {
+      throw new Error(`failed to resolve compare scans for ${owner}/${packageName}`);
+    }
+
+    return {
+      scanId: resolvedScanId,
+      compareScanId: resolvedCompareScanId,
+      scanIds: [resolvedScanId, resolvedCompareScanId],
+      newerScanId: rows[1].scan_id,
+      olderScanId: rows[0].scan_id
     };
   }
 
@@ -187,49 +272,59 @@ export class GraphRepository {
     return row.digest;
   }
 
-  #readAdjacentEdges(scanId: number, digests: string[]): _EdgeRow[] {
+  #readAdjacentEdges(scanIds: number[], digests: string[]): _EdgeRow[] {
+    const scanInClause = placeholders(scanIds.length);
     const inClause = placeholders(digests.length);
     const sql = `
-      SELECT parent_digest, child_digest, edge_kind
+      SELECT DISTINCT parent_digest, child_digest, edge_kind
       FROM manifest_edges
-      WHERE scan_id = ?
+      WHERE scan_id IN (${scanInClause})
         AND (parent_digest IN (${inClause}) OR child_digest IN (${inClause}))
       ORDER BY parent_digest, child_digest, edge_kind
     `;
 
-    return this.#database.prepare(sql).all(scanId, ...digests, ...digests) as _EdgeRow[];
+    return this.#database.prepare(sql).all(...scanIds, ...digests, ...digests) as _EdgeRow[];
   }
 
-  #readVisibleEdges(scanId: number, digests: string[]): _EdgeRow[] {
+  #readVisibleEdges(scanIds: number[], digests: string[]): _EdgeRow[] {
+    const scanInClause = placeholders(scanIds.length);
     const inClause = placeholders(digests.length);
     const sql = `
-      SELECT parent_digest, child_digest, edge_kind
+      SELECT DISTINCT parent_digest, child_digest, edge_kind
       FROM manifest_edges
-      WHERE scan_id = ?
+      WHERE scan_id IN (${scanInClause})
         AND parent_digest IN (${inClause})
         AND child_digest IN (${inClause})
       ORDER BY parent_digest, child_digest, edge_kind
     `;
 
-    return this.#database.prepare(sql).all(scanId, ...digests, ...digests) as _EdgeRow[];
+    return this.#database.prepare(sql).all(...scanIds, ...digests, ...digests) as _EdgeRow[];
   }
 
-  #readManifestMap(scanId: number, digests: string[], includePayload: boolean): Map<string, ManifestDetails> {
+  #readManifestMap(
+    scanIds: number[],
+    digests: string[],
+    includePayload: boolean,
+    newerScanId: number,
+    olderScanId: number | undefined
+  ): Map<string, ManifestDetails> {
+    const scanInClause = placeholders(scanIds.length);
     const inClause = placeholders(digests.length);
     const payloadColumn = includePayload ? "payload.raw_json" : "NULL";
     const sql = `
       WITH ranked_platforms AS (
         SELECT
+          scan_id,
           child_digest,
           platform_os,
           platform_architecture,
           platform_variant,
           ROW_NUMBER() OVER (
-            PARTITION BY child_digest
+            PARTITION BY scan_id, child_digest
             ORDER BY parent_digest
           ) AS row_number
         FROM manifest_descriptors
-        WHERE scan_id = ?
+        WHERE scan_id IN (${scanInClause})
           AND child_digest IN (${inClause})
           AND (
             platform_os IS NOT NULL
@@ -238,6 +333,7 @@ export class GraphRepository {
           )
       )
       SELECT
+        manifest.scan_id,
         manifest.digest,
         manifest.version_id,
         package_version.created_at,
@@ -263,18 +359,30 @@ export class GraphRepository {
        AND tag.version_id = manifest.version_id
        AND tag.is_digest_tag = 0
       LEFT JOIN ranked_platforms platform
-        ON platform.child_digest = manifest.digest
+        ON platform.scan_id = manifest.scan_id
+       AND platform.child_digest = manifest.digest
        AND platform.row_number = 1
-      WHERE manifest.scan_id = ?
+      WHERE manifest.scan_id IN (${scanInClause})
         AND manifest.digest IN (${inClause})
-      ORDER BY manifest.digest, tag.tag
+      ORDER BY manifest.digest, CASE WHEN manifest.scan_id = ? THEN 0 ELSE 1 END, tag.tag
     `;
-    const rows = this.#database.prepare(sql).all(scanId, ...digests, scanId, ...digests) as _ManifestRow[];
+    const rows = this.#database
+      .prepare(sql)
+      .all(...scanIds, ...digests, ...scanIds, ...digests, newerScanId) as _ManifestRow[];
     const manifests = new Map<string, ManifestDetails>();
+    const scanMemberships = new Map<string, Set<number>>();
+    const tagsByDigest = new Map<string, Map<string, Set<number>>>();
 
     for (const row of rows) {
+      let scanMembership = scanMemberships.get(row.digest);
+      if (!scanMembership) {
+        scanMembership = new Set<number>();
+        scanMemberships.set(row.digest, scanMembership);
+      }
+      scanMembership.add(row.scan_id);
+
       let manifest = manifests.get(row.digest);
-      if (!manifest) {
+      if (!manifest || row.scan_id === newerScanId) {
         manifest = {
           id: row.digest,
           digest: row.digest,
@@ -287,18 +395,64 @@ export class GraphRepository {
           artifactType: row.artifact_type,
           subjectDigest: row.subject_digest,
           tags: [],
+          changeStatus: "unchanged",
           rawJson: row.raw_json
         };
         manifests.set(row.digest, manifest);
       }
 
-      if (row.tag && !manifest.tags.includes(row.tag)) {
-        manifest.tags.push(row.tag);
+      if (row.tag) {
+        let tags = tagsByDigest.get(row.digest);
+        if (!tags) {
+          tags = new Map<string, Set<number>>();
+          tagsByDigest.set(row.digest, tags);
+        }
+
+        let tagScans = tags.get(row.tag);
+        if (!tagScans) {
+          tagScans = new Set<number>();
+          tags.set(row.tag, tagScans);
+        }
+
+        tagScans.add(row.scan_id);
       }
+    }
+
+    for (const [digest, manifest] of manifests) {
+      const tagMap = tagsByDigest.get(digest) ?? new Map<string, Set<number>>();
+      manifest.changeStatus = _resolveChangeStatus(
+        scanMemberships.get(digest) ?? new Set<number>(),
+        newerScanId,
+        olderScanId
+      );
+      manifest.tags = [...tagMap.entries()]
+        .map(([name, tagScans]) => ({
+          name,
+          changeStatus: _resolveChangeStatus(tagScans, newerScanId, olderScanId)
+        }))
+        .sort((left, right) => left.name.localeCompare(right.name));
     }
 
     return manifests;
   }
+}
+
+function _resolveChangeStatus(
+  scanIds: ReadonlySet<number>,
+  newerScanId: number,
+  olderScanId: number | undefined
+): ChangeStatus {
+  if (olderScanId === undefined) {
+    return "unchanged";
+  }
+
+  const hasNewer = scanIds.has(newerScanId);
+  const hasOlder = scanIds.has(olderScanId);
+  if (hasNewer && hasOlder) {
+    return "unchanged";
+  }
+
+  return hasNewer ? "added" : "removed";
 }
 
 function _formatPlatform(os: string | null, architecture: string | null, variant: string | null): string | null {

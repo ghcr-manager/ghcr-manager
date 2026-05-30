@@ -171,6 +171,29 @@ dd {
   word-break: break-word;
 }
 
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
+}
+
+.tag {
+  display: inline-block;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  background: #e7eeea;
+}
+
+.tag.added {
+  color: #1f6f2c;
+  background: #d9f0dc;
+}
+
+.tag.removed {
+  color: #8d1f17;
+  background: #f6dbd8;
+}
+
 pre {
   margin: 0;
   white-space: pre-wrap;

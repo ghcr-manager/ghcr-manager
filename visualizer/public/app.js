@@ -5,6 +5,7 @@ const elements = {
   owner: document.querySelector("#owner"),
   packageName: document.querySelector("#package"),
   scanId: document.querySelector("#scan-id"),
+  compareScanId: document.querySelector("#compare-scan-id"),
   lookupMode: document.querySelector("#lookup-mode"),
   lookupValue: document.querySelector("#lookup-value"),
   depth: document.querySelector("#depth"),
@@ -86,6 +87,12 @@ const cy = cytoscape({
         "overlay-color": "#165a86",
         "overlay-opacity": 0.12,
         "overlay-padding": 8
+      }
+    },
+    {
+      selector: "node.removed",
+      style: {
+        opacity: 0.72
       }
     },
     {
@@ -173,7 +180,7 @@ async function loadGraph(centerDigest) {
   const url = packageBaseUrl("/graph");
   url.searchParams.set("center_digest", centerDigest);
   url.searchParams.set("depth", elements.depth.value);
-  appendOptionalScan(url);
+  appendOptionalScanParams(url);
   setStatus("Loading graph...");
   const graph = await fetchJson(url);
   state.currentGraph = graph;
@@ -191,7 +198,7 @@ async function expandSelectedNode() {
   const url = packageBaseUrl("/graph");
   url.searchParams.set("center_digest", state.selectedDigest);
   url.searchParams.set("depth", "1");
-  appendOptionalScan(url);
+  appendOptionalScanParams(url);
   setStatus(`Expanding ${shortDigest(state.selectedDigest)}...`);
   const expansionGraph = await fetchJson(url);
   const previousNodeCount = state.currentGraph.nodes.length;
@@ -225,7 +232,7 @@ async function selectNode(digest) {
 
 async function loadManifestDetails(digest) {
   const url = packageBaseUrl(`/manifests/${encodeURIComponent(digest)}`);
-  appendOptionalScan(url);
+  appendOptionalScanParams(url);
   const details = await fetchJson(url);
   state.selectedManifestDetails = details;
   elements.details.hidden = false;
@@ -239,7 +246,7 @@ async function loadManifestDetails(digest) {
   elements.detailPlatform.textContent = details.displayPlatform ?? "-";
   elements.detailArtifactType.textContent = details.artifactType ?? "-";
   elements.detailSubject.textContent = details.subjectDigest ?? "-";
-  elements.detailTags.textContent = details.tags.join(", ") || "-";
+  renderTagList(elements.detailTags, details.tags);
   elements.expandNode.disabled = false;
   elements.centerNode.disabled = state.currentGraph?.centerDigest === digest;
   elements.showRawJson.disabled = !details.rawJson;
@@ -260,7 +267,7 @@ function renderGraph(graph, mode, options = {}) {
         id: node.id,
         label: buildNodeLabel(node),
         fullDigest: node.digest,
-        borderColor: kindBorderColor(node.manifestKind),
+        borderColor: nodeBorderColor(node),
         nodeColor: kindFillColor(node.manifestKind)
       },
       classes: buildNodeClasses(node, graph),
@@ -308,10 +315,10 @@ function buildNodeLabel(node) {
     secondaryLines.push(node.displayPlatform);
   }
 
-  secondaryLines.push(node.tags.length > 0 ? node.tags[0] : `#${node.versionId}`);
+  secondaryLines.push(node.tags.length > 0 ? buildTagDisplayText(node.tags[0]) : `#${node.versionId}`);
 
   if (node.tags.length > 1) {
-    secondaryLines.push(node.tags.slice(1).join(" | "));
+    secondaryLines.push(node.tags.slice(1).map(buildTagDisplayText).join(" | "));
   }
 
   return [primaryLine, "", ...secondaryLines].join("\n");
@@ -332,7 +339,7 @@ function shortDigest(digest) {
 
 function resolveUrl() {
   const url = packageBaseUrl("/manifests");
-  appendOptionalScan(url);
+  appendOptionalScanParams(url);
   url.searchParams.set(elements.lookupMode.value, elements.lookupValue.value.trim());
   return url;
 }
@@ -343,10 +350,15 @@ function packageBaseUrl(suffix) {
   return new URL(`/api/packages/${owner}/${packageName}${suffix}`, window.location.origin);
 }
 
-function appendOptionalScan(url) {
+function appendOptionalScanParams(url) {
   const scanId = elements.scanId.value.trim();
   if (scanId) {
     url.searchParams.set("scan_id", scanId);
+  }
+
+  const compareScanId = elements.compareScanId.value.trim();
+  if (compareScanId) {
+    url.searchParams.set("compare_scan_id", compareScanId);
   }
 }
 
@@ -371,6 +383,7 @@ function buildGraphContext(graph) {
     owner: graph.owner,
     packageName: graph.packageName,
     scanId: graph.scanId,
+    compareScanId: graph.compareScanId ?? null,
     centerDigest: graph.centerDigest
   };
 }
@@ -380,7 +393,7 @@ function buildGraphViewKey(graph) {
     .map((node) => node.digest)
     .sort()
     .join(",");
-  return `${graph.owner}/${graph.packageName}#${graph.scanId}#${graph.centerDigest}#${graph.depth}#${digests}`;
+  return `${graph.owner}/${graph.packageName}#${graph.scanId}#${graph.compareScanId ?? ""}#${graph.centerDigest}#${graph.depth}#${digests}`;
 }
 
 function isSameGraphContext(left, right) {
@@ -390,6 +403,7 @@ function isSameGraphContext(left, right) {
     left.owner === right.owner &&
     left.packageName === right.packageName &&
     left.scanId === right.scanId &&
+    left.compareScanId === right.compareScanId &&
     left.centerDigest === right.centerDigest
   );
 }
@@ -421,6 +435,9 @@ function buildNodeClasses(node, graph) {
   const classes = [];
   if (node.digest === graph.centerDigest) {
     classes.push("center");
+  }
+  if (node.changeStatus === "removed") {
+    classes.push("removed");
   }
   if (node.digest === state.selectedDigest) {
     classes.push("selected");
@@ -507,6 +524,34 @@ function kindLabel(node) {
   return kindShortLabel(manifestKind);
 }
 
+function buildTagDisplayText(tag) {
+  switch (tag.changeStatus) {
+    case "added":
+      return `(+) ${tag.name}`;
+    case "removed":
+      return `(-) ${tag.name}`;
+    default:
+      return tag.name;
+  }
+}
+
+function renderTagList(container, tags) {
+  container.replaceChildren();
+  container.classList.remove("tag-list");
+  if (tags.length === 0) {
+    container.textContent = "-";
+    return;
+  }
+
+  container.classList.add("tag-list");
+  for (const tag of tags) {
+    const tagElement = document.createElement("span");
+    tagElement.className = `tag ${tag.changeStatus}`;
+    tagElement.textContent = buildTagDisplayText(tag);
+    container.append(tagElement);
+  }
+}
+
 function kindShortLabel(manifestKind) {
   switch (manifestKind) {
     case "multi_arch_manifest":
@@ -554,6 +599,17 @@ function kindBorderColor(manifestKind) {
       return "#5f6368";
     default:
       return "#355446";
+  }
+}
+
+function nodeBorderColor(node) {
+  switch (node.changeStatus) {
+    case "added":
+      return "#0b8f3a";
+    case "removed":
+      return "#d32f2f";
+    default:
+      return "#6b7280";
   }
 }
 
