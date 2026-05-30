@@ -40,6 +40,10 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
   - do not commit `dist/` to `main`
   - do not create workflow-managed release commits that add `dist/`
   - keep the tag-push release model and let the action/npm paths build or install at runtime as they do today
+- Visualizer packaging note:
+  - publish the visualizer as a separate npm package, not as part of the main `ghcr-manager` package
+  - copy browser assets into `visualizer/dist/public` during build so installed npm consumers can run the local server
+    outside the repo checkout
 - `delete-tags` and `exclude-tags` on the root action are newline-separated.
 - Untag live tests reuse the shared seed implementation underneath rather than carrying a separate seed action.
 - Test-only helper scripts now live under `tools/tests`; `tools/` root is reserved for runtime, repo-maintenance, and
@@ -55,6 +59,9 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
 - Manual visual demo note:
   - repo-local scripts under `tools/tests/visualizer/` now provide a before/after GHCR package mutation flow that can
     show unchanged, removed, and added graph branches in one visualizer compare
+- Visualizer docs note:
+  - user-facing visualizer docs now live in `docs/visualizer.md`
+  - the visualizer package also carries its own npm-facing `visualizer/README.md`
 - Scenario workflow concurrency note:
   - cleanup scenario execution is serialized per `scenario + executor`
   - user-owner cleanup now has its own dedicated concurrency group because it mutates one fixed package
@@ -168,6 +175,10 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
 ## Current Next Plan
 
 - [ ] Clean up remaining repo rough edges before first public release.
+- [x] Prepare the visualizer for separate npm publication:
+  - make `visualizer/` a publishable package with its own bin and README
+  - copy browser assets into `dist/public` during build so installed packages can serve the UI
+  - add user docs and release workflow steps for publishing `ghcr-manager-visualizer`
 - [x] Refactor the cleanup step summary toward release-facing terminology and counts:
   - replace planner-heavy labels like `root`/`closure` in the Markdown surface with user-facing item wording
   - derive planned delete counts for tags, images, multi-arch manifests, and optional artifact/signature classes from

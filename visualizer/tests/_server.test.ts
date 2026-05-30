@@ -5,7 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
-import { startVisualizerServer } from "../src/_server.js";
+import { _resolveRuntimePaths, startVisualizerServer } from "../src/_server.js";
 
 test("visualizer server serves graph API responses from a read-only database", async () => {
   const directory = mkdtempSync(join(tmpdir(), "ghcr-visualizer-server-"));
@@ -47,6 +47,17 @@ test("visualizer server serves graph API responses from a read-only database", a
     }
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test("visualizer server resolves runtime asset paths for source and built installs", () => {
+  assert.deepEqual(_resolveRuntimePaths("file:///tmp/ghcr-manager/visualizer/src/_server.js"), {
+    publicDirectory: "/tmp/ghcr-manager/visualizer/public",
+    cytoscapePath: "/tmp/ghcr-manager/node_modules/cytoscape/dist/cytoscape.esm.min.mjs"
+  });
+  assert.deepEqual(_resolveRuntimePaths("file:///tmp/npm/ghcr-manager-visualizer/dist/src/_server.js"), {
+    publicDirectory: "/tmp/npm/ghcr-manager-visualizer/dist/public",
+    cytoscapePath: "/tmp/npm/ghcr-manager-visualizer/node_modules/cytoscape/dist/cytoscape.esm.min.mjs"
+  });
 });
 
 function initializeSchema(database: Database.Database): void {

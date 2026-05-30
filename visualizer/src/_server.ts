@@ -28,9 +28,7 @@ export interface VisualizerServerHandle {
 export async function startVisualizerServer(options: VisualizerServerOptions): Promise<VisualizerServerHandle> {
   const database = new Database(options.databasePath, { readonly: true, fileMustExist: true });
   const repository = new GraphRepository(database);
-  const baseDirectory = resolve(fileURLToPath(new URL("..", import.meta.url)));
-  const publicDirectory = join(baseDirectory, "public");
-  const cytoscapePath = join(baseDirectory, "..", "node_modules", "cytoscape", "dist", "cytoscape.esm.min.mjs");
+  const runtimePaths = _resolveRuntimePaths(import.meta.url);
 
   const server = createServer(async (request, response) => {
     const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);
@@ -42,13 +40,13 @@ export async function startVisualizerServer(options: VisualizerServerOptions): P
       }
 
       if (url.pathname === "/vendor/cytoscape.js") {
-        await _streamFile(response, cytoscapePath);
+        await _streamFile(response, runtimePaths.cytoscapePath);
         return;
       }
 
       const requestedPath = url.pathname === "/" ? "/index.html" : url.pathname;
-      const staticPath = resolve(publicDirectory, `.${requestedPath}`);
-      if (!staticPath.startsWith(publicDirectory)) {
+      const staticPath = resolve(runtimePaths.publicDirectory, `.${requestedPath}`);
+      if (!staticPath.startsWith(runtimePaths.publicDirectory)) {
         throw Object.assign(new Error("not found"), { code: "ENOENT" });
       }
 
@@ -92,6 +90,17 @@ export async function startVisualizerServer(options: VisualizerServerOptions): P
       });
       database.close();
     }
+  };
+}
+
+export function _resolveRuntimePaths(importMetaUrl: string): {
+  publicDirectory: string;
+  cytoscapePath: string;
+} {
+  const baseDirectory = resolve(fileURLToPath(new URL("..", importMetaUrl)));
+  return {
+    publicDirectory: join(baseDirectory, "public"),
+    cytoscapePath: join(baseDirectory, "..", "node_modules", "cytoscape", "dist", "cytoscape.esm.min.mjs")
   };
 }
 
