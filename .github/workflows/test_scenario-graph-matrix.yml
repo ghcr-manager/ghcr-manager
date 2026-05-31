@@ -1,0 +1,93 @@
+name: "Test: Scenario Graph Matrix"
+run-name: "Test Scenario Graph Matrix"
+
+"on":
+  workflow_dispatch:
+    inputs:
+      upload_artifacts:
+        description: Upload the final rescan DB artifact from inside the action.
+        required: false
+        default: true
+        type: boolean
+      artifact_retention_days:
+        description: Optional artifact retention-days override for action-owned DB uploads.
+        required: false
+        default: ""
+        type: string
+  workflow_call:
+    inputs:
+      upload_artifacts:
+        required: false
+        default: true
+        type: boolean
+      artifact_retention_days:
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+  actions: write
+  id-token: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Render graph scenario matrix
+        id: matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          matrix_json="$(node tools/tests/render-graph-scenario-matrix.mjs)"
+          echo "matrix=$matrix_json" >> "$GITHUB_OUTPUT"
+
+  execute:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
+    uses: ./.github/workflows/test_scenario-executor.yml
+    secrets: inherit
+    with:
+      scenario: ${{ matrix.scenario }}
+      executor: ${{ matrix.executor }}
+      upload_artifacts: ${{ inputs.upload_artifacts }}
+      artifact_retention_days: ${{ inputs.artifact_retention_days }}
+      package_name_suffix: graph-matrix
+
+  bundle-db-artifacts:
+    if: ${{ always() && inputs.upload_artifacts }}
+    needs: execute
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Merge current-run graph scenario DB artifacts
+        id: merge
+        uses: ./merge-run-artifacts
+        with:
+          upload-artifacts: "true"
+          db-file: ghcr-manager-merged--scenario-graph-matrix-cleanup.sqlite
+          db-artifact-retention-days: ${{ inputs.artifact_retention_days }}
+          delete-source-artifacts: "true"
+          artifact-name-glob: "*.sqlite"
+
+      - name: Print merged artifact outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "db-path: ${{ steps.merge.outputs.db-path }}"
+          echo "artifact-id: ${{ steps.merge.outputs.artifact-id }}"
+          echo "artifact-url: ${{ steps.merge.outputs.artifact-url }}"
+          echo "artifact-digest: ${{ steps.merge.outputs.artifact-digest }}"

@@ -32,6 +32,18 @@ run-name: Test Scenario Executor (${{ inputs.scenario }} / ${{ inputs.executor }
           - delete-orphaned-images-noop
           - wildcard-tagged-fully-deletable
           - regex-untag-only-single-shared-root
+          - graph-1image-base
+          - graph-1image-attestations
+          - graph-1image-cosign
+          - graph-1image-cosign-attestations
+          - graph-2images-base
+          - graph-2images-attestations
+          - graph-2images-cosign
+          - graph-2images-cosign-attestations
+          - graph-2multiarch-base
+          - graph-2multiarch-attestations
+          - graph-2multiarch-cosign
+          - graph-2multiarch-cosign-attestations
       executor:
         description: Cleanup executor to run against the seeded scenario package.
         required: true

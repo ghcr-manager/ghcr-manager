@@ -62,6 +62,11 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
 - Visualizer docs note:
   - user-facing visualizer docs now live in `docs/visualizer.md`
   - the visualizer package also carries its own npm-facing `visualizer/README.md`
+- Cleanup rethink note:
+  - new graph-only A-B matrix scenarios are being added as normal scenario-executor entries with intentionally no-op
+    cleanup selectors, not through a separate scan-only scenario system
+  - a dedicated graph-matrix workflow should run only those rows so the resulting DBs and screenshots stay focused on
+    cleanup-logic discussion graphs
 - Scenario workflow concurrency note:
   - cleanup scenario execution is serialized per `scenario + executor`
   - user-owner cleanup now has its own dedicated concurrency group because it mutates one fixed package
@@ -175,6 +180,10 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
 ## Current Next Plan
 
 - [ ] Clean up remaining repo rough edges before first public release.
+- [ ] Add A-B graph matrix scenarios for cleanup-logic redesign:
+  - seed 12 graph cases covering A.1-A.3 crossed with base, attestations, cosign, and cosign+attestations
+  - keep them in the existing scenario-executor model with no-op cleanup and non-failing validation
+  - add a dedicated workflow to run just that graph matrix and merge its DB artifacts
 - [x] Prepare the visualizer for separate npm publication:
   - make `visualizer/` a publishable package with its own bin and README
   - copy browser assets into `dist/public` during build so installed packages can serve the UI
