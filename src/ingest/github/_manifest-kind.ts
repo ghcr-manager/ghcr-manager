@@ -41,7 +41,10 @@ export function classifyManifestKind(document: _RegistryManifestDocument): Manif
     return ManifestKinds.attestationManifest;
   }
 
-  if (document.mediaType === "application/vnd.oci.image.manifest.v1+json") {
+  if (
+    document.mediaType === "application/vnd.oci.image.manifest.v1+json" ||
+    document.mediaType === "application/vnd.docker.distribution.manifest.v2+json"
+  ) {
     return ManifestKinds.imageManifest;
   }
 

@@ -49,9 +49,16 @@ test("classifyManifestKind identifies multi-platform indexes as multi-arch manif
   );
 });
 
-test("classifyManifestKind identifies plain image manifests", () => {
+test("classifyManifestKind identifies OCI image manifests", () => {
   assert.equal(
     classifyManifestKind({ mediaType: "application/vnd.oci.image.manifest.v1+json" }),
+    ManifestKinds.imageManifest
+  );
+});
+
+test("classifyManifestKind identifies Docker schema2 image manifests", () => {
+  assert.equal(
+    classifyManifestKind({ mediaType: "application/vnd.docker.distribution.manifest.v2+json" }),
     ManifestKinds.imageManifest
   );
 });

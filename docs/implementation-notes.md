@@ -166,6 +166,9 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
 - Manifest kind note:
   - `classifyManifestKind(document)` now sets `multi_arch_manifest` directly from the fetched index payload when more
     than one direct descriptor carries a real platform; single-platform indexes remain `index_manifest`
+  - Docker schema2 image manifests (`application/vnd.docker.distribution.manifest.v2+json`) must also classify as
+    `image_manifest`; otherwise graph-matrix child images land in the DB with `manifest_kind = null` and render as
+    `unknown` in the visualizer
 - Manifest platform note:
   - `manifests.platform_os|platform_architecture|platform_variant` were removed from schema and runtime code
   - descriptor-scoped platform data remains on `manifest_descriptors`, which matches the actual source of truth in OCI
