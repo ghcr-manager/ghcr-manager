@@ -67,6 +67,10 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
     cleanup selectors, not through a separate scan-only scenario system
   - a dedicated graph-matrix workflow should run only those rows so the resulting DBs and screenshots stay focused on
     cleanup-logic discussion graphs
+- Scenario maintenance note:
+  - test-scenario definitions are now split into cleanup and graph modules under `tools/tests/test-scenarios/`
+  - the GHCR test-scenario seed action is now a dispatcher that calls small repo-local seed scripts plus a dedicated
+    multi-arch sub-action for the remaining complex cases
 - Scenario workflow concurrency note:
   - cleanup scenario execution is serialized per `scenario + executor`
   - user-owner cleanup now has its own dedicated concurrency group because it mutates one fixed package
@@ -180,7 +184,7 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
 ## Current Next Plan
 
 - [ ] Clean up remaining repo rough edges before first public release.
-- [ ] Add A-B graph matrix scenarios for cleanup-logic redesign:
+- [x] Add A-B graph matrix scenarios for cleanup-logic redesign:
   - seed 12 graph cases covering A.1-A.3 crossed with base, attestations, cosign, and cosign+attestations
   - keep them in the existing scenario-executor model with no-op cleanup and non-failing validation
   - add a dedicated workflow to run just that graph matrix and merge its DB artifacts
