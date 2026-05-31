@@ -67,6 +67,9 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
     cleanup selectors, not through a separate scan-only scenario system
   - a dedicated graph-matrix workflow should run only those rows so the resulting DBs and screenshots stay focused on
     cleanup-logic discussion graphs
+  - graph-matrix attestation variants should reuse normal build provenance, not `cosign attest`, because current
+    cosign bundle output is classified as `signature_manifest` rather than the in-toto provenance
+    `attestation_manifest` shape seen in the regular seeded scenarios
 - Scenario maintenance note:
   - test-scenario definitions are now split into cleanup and graph modules under `tools/tests/test-scenarios/`
   - the GHCR test-scenario seed action is now a dispatcher that calls small repo-local seed scripts plus a dedicated

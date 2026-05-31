@@ -16,7 +16,12 @@ if (!scenarioId || !imageRef) {
 const scenario = _resolveScenario(scenarioId);
 const imageDigests = [];
 for (const imageSpec of scenario.images) {
-  const digest = _buildImage(imageRef, imageSpec.tag, `${scenarioId} ${imageSpec.tag}`);
+  const digest = _buildImage(
+    imageRef,
+    imageSpec.tag,
+    `${scenarioId} ${imageSpec.tag}`,
+    scenario.includeAttestations ? "with-provenance" : "plain"
+  );
   imageDigests.push({
     ...imageSpec,
     digest
@@ -54,17 +59,7 @@ if (scenario.includeCosign) {
 }
 
 if (scenario.includeAttestations) {
-  const predicatePath = _writePredicateFile(scenarioId);
-  try {
-    for (const imageSpec of imageDigests) {
-      _cosignAttest(`${imageRef}@${imageSpec.digest}`, predicatePath);
-    }
-    for (const indexSpec of indexDigests) {
-      _cosignAttest(`${imageRef}@${indexSpec.digest}`, predicatePath);
-    }
-  } finally {
-    rmSync(predicatePath, { force: true });
-  }
+  // Provenance-bearing per-image pushes already created OCI attestation manifests.
 }
 
 process.stdout.write(
@@ -133,27 +128,62 @@ function _resolveScenario(inputScenarioId) {
   };
 }
 
-function _buildImage(imageRefValue, tag, payload) {
+function _buildImage(imageRefValue, tag, payload, mode) {
   const contextDirectory = mkdtempSync(join(tmpdir(), "ghcr-graph-matrix-image-"));
   const fixtureDirectory = resolve(process.cwd(), "tools", "tests", "fixtures", "minimal-image");
   cpSync(fixtureDirectory, contextDirectory, { recursive: true });
   writeFileSync(join(contextDirectory, "payload.txt"), `${payload}\n`);
   try {
-    execFileSync(
-      "docker",
-      [
-        "buildx",
-        "build",
-        "--platform",
-        "linux/amd64",
-        "--provenance=false",
-        "--push",
-        "--tag",
-        `${imageRefValue}:${tag}`,
-        contextDirectory
-      ],
-      { stdio: "inherit" }
-    );
+    if (mode === "with-provenance") {
+      const temporaryTag = `${tag}--source`;
+      execFileSync(
+        "docker",
+        [
+          "buildx",
+          "build",
+          "--platform",
+          "linux/amd64",
+          "--provenance=true",
+          "--push",
+          "--tag",
+          `${imageRefValue}:${temporaryTag}`,
+          contextDirectory
+        ],
+        { stdio: "inherit" }
+      );
+
+      const sourceDigest = inspectDigest(`${imageRefValue}:${temporaryTag}`);
+      const platformDigest = _resolvePlatformDigest(`${imageRefValue}@${sourceDigest}`, "linux", "amd64");
+      execFileSync(
+        "docker",
+        [
+          "buildx",
+          "imagetools",
+          "create",
+          "--prefer-index=false",
+          "--tag",
+          `${imageRefValue}:${tag}`,
+          `${imageRefValue}@${platformDigest}`
+        ],
+        { stdio: "inherit" }
+      );
+    } else {
+      execFileSync(
+        "docker",
+        [
+          "buildx",
+          "build",
+          "--platform",
+          "linux/amd64",
+          "--provenance=false",
+          "--push",
+          "--tag",
+          `${imageRefValue}:${tag}`,
+          contextDirectory
+        ],
+        { stdio: "inherit" }
+      );
+    }
   } finally {
     rmSync(contextDirectory, { recursive: true, force: true });
   }
@@ -175,25 +205,20 @@ function _cosignSign(reference) {
   execFileSync("cosign", ["sign", "--yes", reference], { stdio: "inherit" });
 }
 
-function _cosignAttest(reference, predicatePath) {
-  execFileSync(
-    "cosign",
-    ["attest", "--yes", "--predicate", predicatePath, "--type", "https://slsa.dev/provenance/v1", reference],
-    { stdio: "inherit" }
+function _resolvePlatformDigest(reference, os, architecture) {
+  const manifest = JSON.parse(
+    execFileSync("docker", ["buildx", "imagetools", "inspect", "--raw", reference], { encoding: "utf8" })
   );
-}
+  for (const candidate of manifest.manifests ?? []) {
+    if (candidate?.platform?.os !== os || candidate?.platform?.architecture !== architecture) {
+      continue;
+    }
 
-function _writePredicateFile(scenarioIdValue) {
-  const filePath = join(tmpdir(), `ghcr-manager-${scenarioIdValue}-predicate.json`);
-  writeFileSync(
-    filePath,
-    JSON.stringify({
-      buildDefinition: {
-        externalParameters: {
-          scenario: scenarioIdValue
-        }
-      }
-    })
-  );
-  return filePath;
+    const digest = candidate.digest;
+    if (typeof digest === "string" && digest.startsWith("sha256:")) {
+      return digest;
+    }
+  }
+
+  throw new Error(`failed to resolve platform digest for ${reference} (${os}/${architecture})`);
 }
