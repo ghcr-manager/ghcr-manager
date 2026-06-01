@@ -57,7 +57,6 @@ export class PlannerDirectTargetTags {
        AND roots.root_version_id = t.version_id
       WHERE t.scan_id = ?
         AND t.is_digest_tag = ?
-        AND roots.has_ancestor = 0
         AND (${selectedTagPredicate.sql})
         ${excludedRootSql}
         ${olderThanSql}

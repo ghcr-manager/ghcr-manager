@@ -102,10 +102,10 @@ export class PlannerDirectTargetRoots {
           root_manifest_kind,
           created_at,
           tag_count,
-          is_tagged
+          is_tagged,
+          has_ancestor
         FROM v_scan_root_manifests
         WHERE scan_id = ?
-          AND has_ancestor = 0
           ${cutoffSql}
       ),
       selected_tags AS (
@@ -194,6 +194,7 @@ export class PlannerDirectTargetRoots {
           ) AS recency_rank
         FROM root_candidates rc
         WHERE rc.is_tagged = 0
+          AND rc.has_ancestor = 0
           AND (? = 1 OR ? = 1)
       ),
       final_untagged_targets AS (
