@@ -93,7 +93,8 @@ process.stdout.write(
 
 function _resolveScenario(inputScenarioId) {
   const variant = inputScenarioId.replace(/^graph-/, "");
-  const [baseCase, extension] = variant.split("-");
+  const [baseCase, ...extensionParts] = variant.split("-");
+  const extension = extensionParts.join("-");
 
   const images =
     baseCase === "1image"
