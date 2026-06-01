@@ -211,6 +211,8 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
   - the follow-up audit update only touches selected tags that belong to a persisted root decision
   - this matters for `keep-n-tagged` overflow cases where a selected tag survives retention and therefore has no
     matching decision row
+  - cleanup summary `Deleted tags` currently counts only selected tags marked deleted in `cleanup_selected_tags`; it
+    does not yet count collateral tag disappearance when a deleted package version takes additional tags with it
 
 ## Current Next Plan
 

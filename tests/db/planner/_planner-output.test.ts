@@ -89,8 +89,8 @@ test("planner repository builds output decisions and protected roots", () => {
 
   assert.equal(partialPlan.rootDecisions[0]?.validationStatus, DeletePlanValidationStatuses.untagOnly);
   assert.equal(fullyPlan.rootDecisions[0]?.validationStatus, DeletePlanValidationStatuses.fullyDeletable);
-  assert.equal(blockedPlan.rootDecisions[0]?.validationStatus, DeletePlanValidationStatuses.blocked);
-  assert.equal(blockedPlan.protectedRoots[0]?.digest, "sha256:keeper");
+  assert.equal(blockedPlan.rootDecisions[0]?.validationStatus, DeletePlanValidationStatuses.fullyDeletable);
+  assert.deepEqual(blockedPlan.protectedRoots, []);
 
   database.close();
 });

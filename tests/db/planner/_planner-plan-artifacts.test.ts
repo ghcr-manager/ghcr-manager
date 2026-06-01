@@ -62,7 +62,7 @@ function _insertManifestVersion(
   }
 }
 
-test("planner plan artifacts derive closure members and retained-root blocks", (t) => {
+test("planner plan artifacts prune descendants that retained tagged manifests still need", (t) => {
   const harness = _createHarness("pkg");
   t.after(() => harness.database.close());
 
@@ -96,20 +96,18 @@ test("planner plan artifacts derive closure members and retained-root blocks", (
 
   assert.deepEqual(
     artifacts.closureManifests.map((manifest) => manifest.memberDigest),
-    ["sha256:root-b", "sha256:shared-child"]
+    ["sha256:root-b"]
   );
-  assert.deepEqual(artifacts.blockedRoots, [
+  assert.deepEqual(artifacts.blockedRoots, []);
+  assert.deepEqual(artifacts.fullyDeletableRoots, [
     {
-      blockedVersionId: 2,
-      blockedDigest: "sha256:root-b",
-      blockingVersionId: 1,
-      blockingDigest: "sha256:root-a",
-      overlapDigest: "sha256:shared-child",
-      overlapManifestKind: ManifestKinds.imageManifest,
-      reason: "overlap-with-retained-root"
+      versionId: 2,
+      digest: "sha256:root-b",
+      manifestKind: ManifestKinds.multiArchManifest,
+      reason: "delete-untagged",
+      selectionMode: "delete-root"
     }
   ]);
-  assert.deepEqual(artifacts.fullyDeletableRoots, []);
 });
 
 test("planner plan artifacts ignore non-delete direct targets when building closure and blocks", (t) => {
@@ -289,26 +287,21 @@ test("planner plan artifacts do not treat sibling wrapper indexes as overlapping
   ]);
 });
 
-test("planner plan artifacts let younger retained roots block older delete candidates", (t) => {
+test("planner plan artifacts block deleting a selected manifest that retained tagged manifests still need", (t) => {
   const harness = _createHarness("older-blocked");
   t.after(() => harness.database.close());
 
-  _insertManifestVersion(harness.writer, 1, "sha256:old-delete-root", "2026-01-01T10:00:00.000Z", { tag: "pr-123" });
+  _insertManifestVersion(harness.writer, 1, "sha256:selected-image", "2026-01-01T10:00:00.000Z", {
+    manifestKind: ManifestKinds.imageManifest,
+    mediaType: "application/vnd.oci.image.manifest.v1+json",
+    tag: "pr-123"
+  });
   _insertManifestVersion(harness.writer, 2, "sha256:young-retained-root", "2026-05-01T10:00:00.000Z", {
     tag: "latest"
   });
-  _insertManifestVersion(harness.writer, 3, "sha256:shared-child", "2026-05-03T10:00:00.000Z", {
-    manifestKind: ManifestKinds.imageManifest,
-    mediaType: "application/vnd.oci.image.manifest.v1+json"
-  });
-  harness.writer.insertManifestEdge({
-    parentDigest: "sha256:old-delete-root",
-    childDigest: "sha256:shared-child",
-    edgeKind: "image-child"
-  });
   harness.writer.insertManifestEdge({
     parentDigest: "sha256:young-retained-root",
-    childDigest: "sha256:shared-child",
+    childDigest: "sha256:selected-image",
     edgeKind: "image-child"
   });
   harness.writer.rebuildManifestReachability();
@@ -316,8 +309,8 @@ test("planner plan artifacts let younger retained roots block older delete candi
   const artifacts = harness.artifacts.build(harness.scanId, [
     {
       versionId: 1,
-      digest: "sha256:old-delete-root",
-      manifestKind: ManifestKinds.multiArchManifest,
+      digest: "sha256:selected-image",
+      manifestKind: ManifestKinds.imageManifest,
       reason: "delete-tags-all-tags-selected",
       selectionMode: "delete-root"
     }
@@ -326,12 +319,13 @@ test("planner plan artifacts let younger retained roots block older delete candi
   assert.deepEqual(artifacts.blockedRoots, [
     {
       blockedVersionId: 1,
-      blockedDigest: "sha256:old-delete-root",
+      blockedDigest: "sha256:selected-image",
       blockingVersionId: 2,
       blockingDigest: "sha256:young-retained-root",
-      overlapDigest: "sha256:shared-child",
+      overlapDigest: "sha256:selected-image",
       overlapManifestKind: ManifestKinds.imageManifest,
       reason: "overlap-with-retained-root"
     }
   ]);
+  assert.deepEqual(artifacts.fullyDeletableRoots, []);
 });

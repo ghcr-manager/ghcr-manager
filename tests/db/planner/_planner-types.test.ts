@@ -61,7 +61,7 @@ test("planner repository returns normalized typed planner rows", () => {
 
   assert.equal(plan.directTargetRoots[0]?.manifestKind, ManifestKinds.multiArchManifest);
   assert.equal(plan.closureManifests[1]?.memberManifestKind, ManifestKinds.imageManifest);
-  assert.equal(plan.blockedRoots[0]?.overlapManifestKind, ManifestKinds.imageManifest);
+  assert.deepEqual(plan.blockedRoots, []);
 
   database.close();
 });

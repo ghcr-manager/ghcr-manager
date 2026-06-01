@@ -34,7 +34,23 @@ export class PlannerPlanArtifacts {
 
   #listClosureManifests(scanId: number) {
     const sql = `
-      WITH direct_target_closure AS (
+      WITH retained_tagged_manifests AS (
+        SELECT DISTINCT
+          m.version_id,
+          m.digest
+        FROM manifests m
+        JOIN tags t
+          ON t.scan_id = m.scan_id
+         AND t.version_id = m.version_id
+         AND t.is_digest_tag = 0
+        WHERE m.scan_id = ?
+          AND NOT EXISTS (
+            SELECT 1
+            FROM temp_direct_target_roots dtr
+            WHERE dtr.root_digest = m.digest
+          )
+      ),
+      direct_target_closure AS (
         SELECT
           dtr.root_version_id AS source_version_id,
           dtr.root_digest AS source_digest,
@@ -73,81 +89,62 @@ export class PlannerPlanArtifacts {
         hops_from_root,
         member_role
       FROM direct_target_closure
+      WHERE member_role = 'root'
+         OR NOT EXISTS (
+           SELECT 1
+           FROM retained_tagged_manifests retained
+           JOIN manifest_reachability retained_overlap
+             ON retained_overlap.scan_id = ?
+            AND retained_overlap.ancestor_digest = retained.digest
+            AND retained_overlap.descendant_digest = direct_target_closure.member_digest
+         )
       ORDER BY source_digest, hops_from_root, member_digest
     `;
-    return this.#sql.all<Parameters<typeof mapClosureManifestRow>[0]>(sql, [scanId, scanId]).map(mapClosureManifestRow);
+    return this.#sql
+      .all<Parameters<typeof mapClosureManifestRow>[0]>(sql, [scanId, scanId, scanId, scanId])
+      .map(mapClosureManifestRow);
   }
 
   #listBlockedRoots(scanId: number) {
     const sql = `
-      WITH retained_roots AS (
+      WITH retained_tagged_manifests AS (
         SELECT
-          m.version_id AS root_version_id,
-          m.digest AS root_digest
+          m.version_id AS tagged_version_id,
+          m.digest AS tagged_digest
         FROM manifests m
+        JOIN tags t
+          ON t.scan_id = m.scan_id
+         AND t.version_id = m.version_id
+         AND t.is_digest_tag = 0
         WHERE m.scan_id = ?
-          AND NOT EXISTS (
-            SELECT 1
-            FROM manifest_reachability mr
-            WHERE mr.scan_id = m.scan_id
-              AND mr.descendant_digest = m.digest
-              AND mr.min_distance > 0
-          )
           AND NOT EXISTS (
             SELECT 1
             FROM temp_direct_target_roots dtr
             WHERE dtr.root_digest = m.digest
           )
       ),
-      direct_target_closure AS (
-        SELECT
-          dtr.root_version_id AS root_version_id,
-          dtr.root_digest AS root_digest,
-          dtr.root_manifest_kind AS member_manifest_kind,
-          dtr.root_digest AS member_digest,
-          0 AS hops_from_root
-        FROM temp_direct_target_roots dtr
-
-        UNION ALL
-
-        SELECT
-          dtr.root_version_id AS root_version_id,
-          dtr.root_digest AS root_digest,
-          m.manifest_kind AS member_manifest_kind,
-          m.digest AS member_digest,
-          mr.min_distance AS hops_from_root
-        FROM temp_direct_target_roots dtr
-        JOIN manifest_reachability mr
-          ON mr.scan_id = ?
-         AND mr.ancestor_digest = dtr.root_digest
-         AND mr.min_distance > 0
-        JOIN manifests m
-          ON m.scan_id = ?
-         AND m.digest = mr.descendant_digest
-      ),
       ranked_blocks AS (
         SELECT
-          dtc.root_version_id AS blocked_version_id,
-          dtc.root_digest AS blocked_digest,
-          rr.root_version_id AS blocking_version_id,
-          rr.root_digest AS blocking_digest,
-          dtc.member_digest AS overlap_digest,
-          dtc.member_manifest_kind AS overlap_manifest_kind,
+          dtr.root_version_id AS blocked_version_id,
+          dtr.root_digest AS blocked_digest,
+          retained.tagged_version_id AS blocking_version_id,
+          retained.tagged_digest AS blocking_digest,
+          dtr.root_digest AS overlap_digest,
+          dtr.root_manifest_kind AS overlap_manifest_kind,
           'overlap-with-retained-root' AS block_reason,
           ROW_NUMBER() OVER (
-            PARTITION BY dtc.root_digest, rr.root_digest
+            PARTITION BY dtr.root_digest, retained.tagged_digest
             ORDER BY
-              dtc.hops_from_root,
               retained_overlap.min_distance,
-              dtc.member_digest
+              dtr.root_digest
           ) AS rn
-        FROM direct_target_closure dtc
-        JOIN retained_roots rr
-          ON rr.root_digest <> dtc.root_digest
+        FROM temp_direct_target_roots dtr
+        JOIN retained_tagged_manifests retained
+          ON retained.tagged_digest <> dtr.root_digest
         JOIN manifest_reachability retained_overlap
           ON retained_overlap.scan_id = ?
-         AND retained_overlap.ancestor_digest = rr.root_digest
-         AND retained_overlap.descendant_digest = dtc.member_digest
+         AND retained_overlap.ancestor_digest = retained.tagged_digest
+         AND retained_overlap.descendant_digest = dtr.root_digest
       )
       SELECT
         blocked_version_id,
@@ -162,7 +159,7 @@ export class PlannerPlanArtifacts {
       ORDER BY blocked_digest, blocking_digest, overlap_digest
     `;
     return this.#sql
-      .all<Parameters<typeof mapBlockedRootRow>[0]>(sql, [scanId, scanId, scanId, scanId])
+      .all<Parameters<typeof mapBlockedRootRow>[0]>(sql, [scanId, scanId])
       .map(mapBlockedRootRow);
   }
 
