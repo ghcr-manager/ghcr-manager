@@ -19,15 +19,10 @@ env:
   IMAGE_REF: ghcr.io/${{ vars.GH_TEST_ORG }}/${{ github.event.repository.name }}-test--single
 
 jobs:
-  build_amd64:
-    name: Build image (amd64)
+  verify-environment:
+    name: Verify environment
     runs-on: ubuntu-latest
-    outputs:
-      digest: ${{ steps.build.outputs.digest }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
       - name: Require test org configuration
         shell: bash
         env:
@@ -39,6 +34,16 @@ jobs:
           [[ -n "$GH_TEST_ORG" ]] || { echo "Missing repo variable GH_TEST_ORG" >&2; exit 1; }
           [[ -n "$GH_TEST_PAT_USERNAME" ]] || { echo "Missing repo variable GH_TEST_PAT_USERNAME" >&2; exit 1; }
           [[ -n "$GH_TEST_PAT" ]] || { echo "Missing repo secret GH_TEST_PAT" >&2; exit 1; }
+
+  build_amd64:
+    name: Build image (amd64)
+    runs-on: ubuntu-latest
+    needs: verify-environment
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Build and test image
         id: build
@@ -53,23 +58,12 @@ jobs:
   build_arm64:
     name: Build image (arm64)
     runs-on: ubuntu-24.04-arm
+    needs: verify-environment
     outputs:
       digest: ${{ steps.build.outputs.digest }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Require test org configuration
-        shell: bash
-        env:
-          GH_TEST_ORG: ${{ vars.GH_TEST_ORG }}
-          GH_TEST_PAT_USERNAME: ${{ vars.GH_TEST_PAT_USERNAME }}
-          GH_TEST_PAT: ${{ secrets.GH_TEST_PAT }}
-        run: |
-          set -euo pipefail
-          [[ -n "$GH_TEST_ORG" ]] || { echo "Missing repo variable GH_TEST_ORG" >&2; exit 1; }
-          [[ -n "$GH_TEST_PAT_USERNAME" ]] || { echo "Missing repo variable GH_TEST_PAT_USERNAME" >&2; exit 1; }
-          [[ -n "$GH_TEST_PAT" ]] || { echo "Missing repo secret GH_TEST_PAT" >&2; exit 1; }
 
       - name: Build and test image
         id: build
@@ -84,6 +78,7 @@ jobs:
   publish:
     name: Publish multi-arch image
     needs:
+      - verify-environment
       - build_amd64
       - build_arm64
     runs-on: ubuntu-latest
