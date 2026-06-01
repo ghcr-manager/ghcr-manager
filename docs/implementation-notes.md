@@ -79,6 +79,12 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
     - deleting `image-a` in `2multiarch` removes only `image-a`; `multiarch-a` remains tagged for the same reason
     - attestation-only `delete-image-a` cases remove the selected tagged index manifest itself while retaining its
       image/attestation descendants through the surviving multi-arch tag, so end manifest count drops by `1`
+  - cosign/reverse-link cleanup note:
+    - delete closure is no longer treated as descendant-only
+    - planner closure now starts from the selected manifest plus its descendant closure, then walks manifest adjacency
+      in either direction through manifests not retained by surviving real tags
+    - retained boundary is defined as surviving non-sha tagged manifests plus their descendants via
+      `manifest_reachability`
 - Scenario maintenance note:
   - test-scenario definitions are now split into cleanup and graph modules under `tools/tests/test-scenarios/`
   - the GHCR test-scenario seed action is now a dispatcher that calls small repo-local seed scripts plus a dedicated

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { ManifestKinds, type ManifestKind } from "../../../src/core/index.js";
 import { openDatabase, ScanWriter } from "../../../src/db/index.js";
+import type { DeletePlanRoot } from "../../../src/db/planner/index.js";
 import { PlannerPlanArtifacts } from "../../../src/db/planner/_planner-plan-artifacts.js";
 
 function _createHarness(packageName: string) {
@@ -171,7 +172,7 @@ test("planner plan artifacts expand multi-arch child manifests and referrers int
   });
   harness.writer.rebuildManifestReachability();
 
-  const directTargetRoots = [
+  const directTargetRoots: DeletePlanRoot[] = [
     {
       versionId: 1,
       digest: "sha256:multiarch-root",
@@ -252,7 +253,7 @@ test("planner plan artifacts do not treat sibling wrapper indexes as overlapping
   });
   harness.writer.rebuildManifestReachability();
 
-  const directTargetRoots = [
+  const directTargetRoots: DeletePlanRoot[] = [
     {
       versionId: 2,
       digest: "sha256:untagged-wrapper",
@@ -328,4 +329,66 @@ test("planner plan artifacts block deleting a selected manifest that retained ta
     }
   ]);
   assert.deepEqual(artifacts.fullyDeletableRoots, []);
+});
+
+test("planner plan artifacts include reverse-linked untagged manifests connected to a selected closure", (t) => {
+  const harness = _createHarness("cosign");
+  t.after(() => harness.database.close());
+
+  const selectedDigest = "sha256:1111111111111111111111111111111111111111111111111111111111111111";
+  const signatureDigest = "sha256:2222222222222222222222222222222222222222222222222222222222222222";
+  const digestIndexDigest = "sha256:3333333333333333333333333333333333333333333333333333333333333333";
+
+  _insertManifestVersion(harness.writer, 1, selectedDigest, "2026-05-01T10:00:00.000Z", {
+    manifestKind: ManifestKinds.imageManifest,
+    mediaType: "application/vnd.oci.image.manifest.v1+json",
+    tag: "image-a"
+  });
+  _insertManifestVersion(harness.writer, 2, signatureDigest, "2026-05-01T10:01:00.000Z", {
+    manifestKind: ManifestKinds.signatureManifest,
+    mediaType: "application/vnd.oci.image.manifest.v1+json"
+  });
+  _insertManifestVersion(harness.writer, 3, digestIndexDigest, "2026-05-01T10:02:00.000Z", {
+    manifestKind: ManifestKinds.indexManifest,
+    mediaType: "application/vnd.oci.image.index.v1+json",
+    tag: "sha256-1111111111111111111111111111111111111111111111111111111111111111"
+  });
+  harness.writer.insertManifestEdge({
+    parentDigest: selectedDigest,
+    childDigest: signatureDigest,
+    edgeKind: "referrer"
+  });
+  harness.writer.insertManifestEdge({
+    parentDigest: digestIndexDigest,
+    childDigest: selectedDigest,
+    edgeKind: "digest-tag-referrer"
+  });
+  harness.writer.insertManifestEdge({
+    parentDigest: digestIndexDigest,
+    childDigest: signatureDigest,
+    edgeKind: "image-child"
+  });
+  harness.writer.rebuildManifestReachability();
+
+  const directTargetRoots: DeletePlanRoot[] = [
+    {
+      versionId: 1,
+      digest: selectedDigest,
+      manifestKind: ManifestKinds.imageManifest,
+      reason: "delete-tags-all-tags-selected",
+      selectionMode: "delete-root"
+    }
+  ];
+  const artifacts = harness.artifacts.build(harness.scanId, directTargetRoots);
+
+  assert.deepEqual(artifacts.blockedRoots, []);
+  assert.deepEqual(artifacts.fullyDeletableRoots, directTargetRoots);
+  assert.deepEqual(
+    artifacts.closureManifests.map((manifest) => [manifest.memberDigest, manifest.memberRole]),
+    [
+      [selectedDigest, "root"],
+      [signatureDigest, "descendant"],
+      [digestIndexDigest, "connected"]
+    ]
+  );
 });

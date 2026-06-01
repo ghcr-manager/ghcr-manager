@@ -50,6 +50,26 @@ export class PlannerPlanArtifacts {
             WHERE dtr.root_digest = m.digest
           )
       ),
+      retained_manifests AS (
+        SELECT
+          retained.version_id,
+          retained.digest
+        FROM retained_tagged_manifests retained
+
+        UNION
+
+        SELECT
+          m.version_id,
+          m.digest
+        FROM retained_tagged_manifests retained
+        JOIN manifest_reachability mr
+          ON mr.scan_id = ?
+         AND mr.ancestor_digest = retained.digest
+         AND mr.min_distance > 0
+        JOIN manifests m
+          ON m.scan_id = ?
+         AND m.digest = mr.descendant_digest
+      ),
       direct_target_closure AS (
         SELECT
           dtr.root_version_id AS source_version_id,
@@ -79,29 +99,103 @@ export class PlannerPlanArtifacts {
         JOIN manifests m
           ON m.scan_id = ?
          AND m.digest = mr.descendant_digest
+      ),
+      closure_seed AS (
+        SELECT
+          dtc.source_version_id,
+          dtc.source_digest,
+          dtc.member_version_id,
+          dtc.member_digest,
+          dtc.member_manifest_kind,
+          dtc.hops_from_root,
+          dtc.member_role
+        FROM direct_target_closure dtc
+        WHERE dtc.member_role = 'root'
+           OR NOT EXISTS (
+             SELECT 1
+             FROM retained_manifests retained
+             WHERE retained.digest = dtc.member_digest
+           )
+      ),
+      undirected_edges AS (
+        SELECT
+          me.parent_digest AS source_digest,
+          me.child_digest AS target_digest
+        FROM manifest_edges me
+        WHERE me.scan_id = ?
+
+        UNION
+
+        SELECT
+          me.child_digest AS source_digest,
+          me.parent_digest AS target_digest
+        FROM manifest_edges me
+        WHERE me.scan_id = ?
+      ),
+      raw_delete_component AS (
+        SELECT
+          seed.source_version_id,
+          seed.source_digest,
+          seed.member_version_id,
+          seed.member_digest,
+          seed.member_manifest_kind,
+          seed.hops_from_root,
+          seed.member_role,
+          '|' || seed.member_digest || '|' AS path
+        FROM closure_seed seed
+
+        UNION ALL
+
+        SELECT
+          walk.source_version_id,
+          walk.source_digest,
+          m.version_id AS member_version_id,
+          m.digest AS member_digest,
+          m.manifest_kind AS member_manifest_kind,
+          walk.hops_from_root + 1 AS hops_from_root,
+          'connected' AS member_role,
+          walk.path || m.digest || '|' AS path
+        FROM raw_delete_component walk
+        JOIN undirected_edges edge
+          ON edge.source_digest = walk.member_digest
+        JOIN manifests m
+          ON m.scan_id = ?
+         AND m.digest = edge.target_digest
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM retained_manifests retained
+            WHERE retained.digest = m.digest
+          )
+          AND instr(walk.path, '|' || m.digest || '|') = 0
       )
       SELECT
-        source_version_id,
-        source_digest,
-        member_version_id,
-        member_digest,
-        member_manifest_kind,
-        hops_from_root,
-        member_role
-      FROM direct_target_closure
-      WHERE member_role = 'root'
-         OR NOT EXISTS (
-           SELECT 1
-           FROM retained_tagged_manifests retained
-           JOIN manifest_reachability retained_overlap
-             ON retained_overlap.scan_id = ?
-            AND retained_overlap.ancestor_digest = retained.digest
-            AND retained_overlap.descendant_digest = direct_target_closure.member_digest
-         )
-      ORDER BY source_digest, hops_from_root, member_digest
+        walk.source_version_id,
+        walk.source_digest,
+        MIN(walk.member_version_id) AS member_version_id,
+        walk.member_digest,
+        MIN(walk.member_manifest_kind) AS member_manifest_kind,
+        MIN(walk.hops_from_root) AS hops_from_root,
+        CASE
+          WHEN walk.member_digest = walk.source_digest
+            THEN 'root'
+          WHEN EXISTS (
+            SELECT 1
+            FROM direct_target_closure seed
+            WHERE seed.source_digest = walk.source_digest
+              AND seed.member_digest = walk.member_digest
+              AND seed.member_role = 'descendant'
+          )
+            THEN 'descendant'
+          ELSE 'connected'
+        END AS member_role
+      FROM raw_delete_component walk
+      GROUP BY walk.source_version_id, walk.source_digest, walk.member_digest
+      ORDER BY walk.source_digest, hops_from_root, walk.member_digest
     `;
     return this.#sql
-      .all<Parameters<typeof mapClosureManifestRow>[0]>(sql, [scanId, scanId, scanId, scanId])
+      .all<
+        Parameters<typeof mapClosureManifestRow>[0]
+      >(sql, [scanId, scanId, scanId, scanId, scanId, scanId, scanId, scanId])
       .map(mapClosureManifestRow);
   }
 
@@ -158,9 +252,7 @@ export class PlannerPlanArtifacts {
       WHERE rn = 1
       ORDER BY blocked_digest, blocking_digest, overlap_digest
     `;
-    return this.#sql
-      .all<Parameters<typeof mapBlockedRootRow>[0]>(sql, [scanId, scanId])
-      .map(mapBlockedRootRow);
+    return this.#sql.all<Parameters<typeof mapBlockedRootRow>[0]>(sql, [scanId, scanId]).map(mapBlockedRootRow);
   }
 
   #withDirectTargetRootsTempTable<T>(directTargetRoots: DeletePlanRoot[], callback: () => T): T {
