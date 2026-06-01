@@ -70,6 +70,10 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
   - graph-matrix attestation variants should reuse normal build provenance, not `cosign attest`, because current cosign
     bundle output is classified as `signature_manifest` rather than the in-toto provenance `attestation_manifest` shape
     seen in the regular seeded scenarios
+  - graph-matrix package tags were shortened to local role names like `image-a`, `multiarch`, and `multiarch-a`; the
+    package name already carries the scenario identity, so repeating it inside each tag was removed
+  - `cleanup_root_decisions.overlap_digest` is being kept as the compact representative overlap used by the single-row
+    blocked decision summary, while `cleanup_protected_root_blocks` remains the more detailed blocking table
 - Scenario maintenance note:
   - test-scenario definitions are now split into cleanup and graph modules under `tools/tests/test-scenarios/`
   - the GHCR test-scenario seed action is now a dispatcher that calls small repo-local seed scripts plus a dedicated
