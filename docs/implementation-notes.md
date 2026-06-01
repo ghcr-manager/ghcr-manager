@@ -80,6 +80,9 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
     multi-arch sub-action for the remaining complex cases
   - graph-matrix scenario tags now use short role-based names like `image-a`, `multiarch`, and `multiarch-a` instead of
     repeating the scenario/package identity inside each tag
+  - `test_setup-package-single-attestation.yml` now publishes the final multi-arch and per-platform tags inline with
+    `docker buildx imagetools create --dry-run`, `regctl manifest put`, and `regctl image copy` so that attestation-only
+    setup no longer depends on the external publish action that forces cosign
 - Scenario workflow concurrency note:
   - cleanup scenario execution is serialized per `scenario + executor`
   - user-owner cleanup now has its own dedicated concurrency group because it mutates one fixed package

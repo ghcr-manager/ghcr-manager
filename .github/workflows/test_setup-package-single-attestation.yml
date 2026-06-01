@@ -1,0 +1,123 @@
+# Builds:
+# - single: multi-arch manifest (tagged, with provenance)
+#   - single-amd64: image (tagged, with provenance)
+#   - single-arm64: image (tagged, with provenance)
+
+name: "Test: Setup Package Single Attestation"
+
+"on":
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+env:
+  TEST_OWNER: ${{ vars.GH_TEST_ORG }}
+  IMAGE_REF: ghcr.io/${{ vars.GH_TEST_ORG }}/${{ github.event.repository.name }}-test--single-attestation
+
+jobs:
+  verify-environment:
+    name: Verify environment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require test org configuration
+        shell: bash
+        env:
+          GH_TEST_ORG: ${{ vars.GH_TEST_ORG }}
+          GH_TEST_PAT_USERNAME: ${{ vars.GH_TEST_PAT_USERNAME }}
+          GH_TEST_PAT: ${{ secrets.GH_TEST_PAT }}
+        run: |
+          set -euo pipefail
+          [[ -n "$GH_TEST_ORG" ]] || { echo "Missing repo variable GH_TEST_ORG" >&2; exit 1; }
+          [[ -n "$GH_TEST_PAT_USERNAME" ]] || { echo "Missing repo variable GH_TEST_PAT_USERNAME" >&2; exit 1; }
+          [[ -n "$GH_TEST_PAT" ]] || { echo "Missing repo secret GH_TEST_PAT" >&2; exit 1; }
+
+  build_amd64:
+    name: Build image (amd64)
+    runs-on: ubuntu-latest
+    needs: verify-environment
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Build and test image
+        id: build
+        uses: ./.github/actions/test-registry-build-image
+        with:
+          image_ref: ${{ env.IMAGE_REF }}
+          arch: amd64
+          platform: linux/amd64
+          registry_username: ${{ vars.GH_TEST_PAT_USERNAME }}
+          registry_password: ${{ secrets.GH_TEST_PAT }}
+
+  build_arm64:
+    name: Build image (arm64)
+    runs-on: ubuntu-24.04-arm
+    needs: verify-environment
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Build and test image
+        id: build
+        uses: ./.github/actions/test-registry-build-image
+        with:
+          image_ref: ${{ env.IMAGE_REF }}
+          arch: arm64
+          platform: linux/arm64
+          registry_username: ${{ vars.GH_TEST_PAT_USERNAME }}
+          registry_password: ${{ secrets.GH_TEST_PAT }}
+
+  publish:
+    name: Publish multi-arch image
+    needs:
+      - verify-environment
+      - build_amd64
+      - build_arm64
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ vars.GH_TEST_PAT_USERNAME }}
+          password: ${{ secrets.GH_TEST_PAT }}
+
+      - name: Install regctl
+        uses: regclient/actions/regctl-installer@1b705e32d40851370799ea5814e83d0a5f6a70dc # v0.1.0
+
+      - name: Publish multi-arch image
+        shell: bash
+        run: |
+          set -euo pipefail
+          manifest_digest="$(
+            docker buildx imagetools create \
+              --dry-run \
+              --annotation "index:org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
+              --annotation "index:org.opencontainers.image.version=single" \
+              "${{ env.IMAGE_REF }}@${{ needs.build_amd64.outputs.digest }}" \
+              "${{ env.IMAGE_REF }}@${{ needs.build_arm64.outputs.digest }}" \
+            | regctl manifest put \
+                --by-digest \
+                "${{ env.IMAGE_REF }}" \
+                --format '{{ ( .Manifest.GetDescriptor ).Digest }}'
+          )"
+
+          regctl image copy "${{ env.IMAGE_REF }}@$manifest_digest" "${{ env.IMAGE_REF }}:single"
+          regctl image copy \
+            "${{ env.IMAGE_REF }}@${{ needs.build_amd64.outputs.digest }}" \
+            "${{ env.IMAGE_REF }}:single-amd64"
+          regctl image copy \
+            "${{ env.IMAGE_REF }}@${{ needs.build_arm64.outputs.digest }}" \
+            "${{ env.IMAGE_REF }}:single-arm64"
+
+      - name: Print result
+        run: |
+          echo "Published ${{ env.IMAGE_REF }}:single"
