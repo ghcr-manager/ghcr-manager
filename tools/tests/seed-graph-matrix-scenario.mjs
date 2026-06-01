@@ -81,14 +81,10 @@ function _resolveScenario(inputScenarioId) {
 
   const images =
     baseCase === "1image"
-      ? [{ tag: `${inputScenarioId}--image-a` }]
+      ? [{ tag: "image-a" }]
       : baseCase === "2images"
-        ? [{ tag: `${inputScenarioId}--image-a` }, { tag: `${inputScenarioId}--image-b` }]
-        : [
-            { tag: `${inputScenarioId}--image-a` },
-            { tag: `${inputScenarioId}--image-b` },
-            { tag: `${inputScenarioId}--image-c` }
-          ];
+        ? [{ tag: "image-a" }, { tag: "image-b" }]
+        : [{ tag: "image-a" }, { tag: "image-b" }, { tag: "image-c" }];
 
   const indexes =
     baseCase === "1image"
@@ -96,7 +92,7 @@ function _resolveScenario(inputScenarioId) {
       : baseCase === "2images"
         ? [
             {
-              tag: `${inputScenarioId}--root`,
+              tag: "multiarch",
               members: [
                 { imageIndex: 0, architecture: "amd64" },
                 { imageIndex: 1, architecture: "arm64" }
@@ -105,14 +101,14 @@ function _resolveScenario(inputScenarioId) {
           ]
         : [
             {
-              tag: `${inputScenarioId}--root-a`,
+              tag: "multiarch-a",
               members: [
                 { imageIndex: 0, architecture: "amd64" },
                 { imageIndex: 1, architecture: "arm64" }
               ]
             },
             {
-              tag: `${inputScenarioId}--root-b`,
+              tag: "multiarch-b",
               members: [
                 { imageIndex: 1, architecture: "arm64" },
                 { imageIndex: 2, architecture: "ppc64le" }

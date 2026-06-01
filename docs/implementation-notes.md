@@ -74,6 +74,8 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
   - test-scenario definitions are now split into cleanup and graph modules under `tools/tests/test-scenarios/`
   - the GHCR test-scenario seed action is now a dispatcher that calls small repo-local seed scripts plus a dedicated
     multi-arch sub-action for the remaining complex cases
+  - graph-matrix scenario tags now use short role-based names like `image-a`, `multiarch`, and `multiarch-a` instead of
+    repeating the scenario/package identity inside each tag
 - Scenario workflow concurrency note:
   - cleanup scenario execution is serialized per `scenario + executor`
   - user-owner cleanup now has its own dedicated concurrency group because it mutates one fixed package

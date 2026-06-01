@@ -22,9 +22,9 @@ for (const [baseCase, extension] of [
     supportedExecutors: ["ghcr-manager"],
     includeInMatrix: false,
     includeInGraphMatrix: true,
-    ghcrManagerArgs: ["--delete-tag", `${id}--does-not-exist`],
+    ghcrManagerArgs: ["--delete-tag", "does-not-exist"],
     dataaxiomInputs: {
-      "delete-tags": `${id}--does-not-exist`
+      "delete-tags": "does-not-exist"
     }
   };
 }
