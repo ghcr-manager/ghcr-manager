@@ -65,6 +65,7 @@ export type DeletePlanValidationStatus =
 
 export const DeletePlanValidationReasonCodes = {
   untagOnlyPartialTagMatch: "untag-only-partial-tag-match",
+  untagOnlyRetainedManifest: "untag-only-retained-manifest",
   fullyDeletableNoRetainedOverlap: "fully-deletable-no-retained-overlap",
   blockedOverlapWithRetainedRoot: "blocked-overlap-with-retained-root"
 } as const;
