@@ -58,8 +58,8 @@ const _cleanupOperationsByBaseCase = {
       deleteTagKeys: ["imageA"],
       presentTagNameKeys: ["imageB", "multiarch", "keepDummy"],
       absentTagNameKeys: ["imageA"],
-      counts: ({ startCounts }) => ({
-        manifestCount: startCounts.manifestCount,
+      counts: ({ startCounts, extension }) => ({
+        manifestCount: startCounts.manifestCount - (_extensionUsesAttestationsWithoutCosign(extension) ? 1 : 0),
         tagCount: startCounts.tagCount - 1
       })
     },
@@ -87,8 +87,8 @@ const _cleanupOperationsByBaseCase = {
       deleteTagKeys: ["imageA"],
       presentTagNameKeys: ["imageB", "imageC", "multiarchA", "multiarchB", "keepDummy"],
       absentTagNameKeys: ["imageA"],
-      counts: ({ startCounts }) => ({
-        manifestCount: startCounts.manifestCount,
+      counts: ({ startCounts, extension }) => ({
+        manifestCount: startCounts.manifestCount - (_extensionUsesAttestationsWithoutCosign(extension) ? 1 : 0),
         tagCount: startCounts.tagCount - 1
       })
     },
@@ -178,4 +178,8 @@ function _buildDeleteTagInput(tagKeys) {
 
 function _extensionUsesCosign(extension) {
   return extension === "cosign" || extension === "cosign-attestations";
+}
+
+function _extensionUsesAttestationsWithoutCosign(extension) {
+  return extension === "attestations";
 }

@@ -77,6 +77,8 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
   - graph cleanup expectations were corrected for shared-image tag deletion:
     - deleting `image-a` in `2images` removes only `image-a`; `multiarch` remains tagged because it was not selected
     - deleting `image-a` in `2multiarch` removes only `image-a`; `multiarch-a` remains tagged for the same reason
+    - attestation-only `delete-image-a` cases remove the selected tagged index manifest itself while retaining its
+      image/attestation descendants through the surviving multi-arch tag, so end manifest count drops by `1`
 - Scenario maintenance note:
   - test-scenario definitions are now split into cleanup and graph modules under `tools/tests/test-scenarios/`
   - the GHCR test-scenario seed action is now a dispatcher that calls small repo-local seed scripts plus a dedicated
