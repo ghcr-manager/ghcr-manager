@@ -106,6 +106,15 @@ export function _resolveRuntimePaths(importMetaUrl: string): {
 
 function _handleApi(repository: GraphRepository, url: URL): unknown {
   const segments = url.pathname.split("/").filter(Boolean);
+  if (segments.length === 2 && segments[0] === "api" && segments[1] === "owners") {
+    return repository.listOwners();
+  }
+  if (segments.length === 4 && segments[0] === "api" && segments[1] === "owners" && segments[3] === "packages") {
+    return repository.listPackages(decodeURIComponent(segments[2]));
+  }
+  if (segments.length === 5 && segments[0] === "api" && segments[1] === "packages" && segments[4] === "scans") {
+    return repository.listScans(decodeURIComponent(segments[2]), decodeURIComponent(segments[3]));
+  }
   if (segments.length < 4 || segments[0] !== "api" || segments[1] !== "packages") {
     throw new Error("not found");
   }

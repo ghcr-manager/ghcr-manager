@@ -1,6 +1,15 @@
 import type Database from "better-sqlite3";
 import { placeholders } from "./_sql-placeholders.js";
-import type { ChangeStatus, GraphEdge, GraphResponse, ManifestDetails, ManifestResolution } from "./_types.js";
+import type {
+  ChangeStatus,
+  GraphEdge,
+  GraphResponse,
+  ManifestDetails,
+  ManifestResolution,
+  OwnerOption,
+  PackageOption,
+  ScanOption
+} from "./_types.js";
 
 interface _ManifestRow {
   scan_id: number;
@@ -43,6 +52,48 @@ export class GraphRepository {
 
   constructor(database: Database.Database) {
     this.#database = database;
+  }
+
+  listOwners(): OwnerOption[] {
+    return this.#database
+      .prepare(
+        `
+          SELECT DISTINCT owner
+          FROM package_scans
+          WHERE status = 'completed'
+          ORDER BY owner
+        `
+      )
+      .all() as OwnerOption[];
+  }
+
+  listPackages(owner: string): PackageOption[] {
+    return this.#database
+      .prepare(
+        `
+          SELECT DISTINCT package_name AS packageName
+          FROM package_scans
+          WHERE status = 'completed'
+            AND owner = ?
+          ORDER BY package_name
+        `
+      )
+      .all(owner) as PackageOption[];
+  }
+
+  listScans(owner: string, packageName: string): ScanOption[] {
+    return this.#database
+      .prepare(
+        `
+          SELECT scan_id AS scanId, scan_completed_at AS scanCompletedAt
+          FROM package_scans
+          WHERE status = 'completed'
+            AND owner = ?
+            AND package_name = ?
+          ORDER BY scan_completed_at DESC, scan_id DESC
+        `
+      )
+      .all(owner, packageName) as ScanOption[];
   }
 
   resolveLatestScanId(owner: string, packageName: string): number {

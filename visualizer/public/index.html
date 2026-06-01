@@ -13,19 +13,27 @@
         <form id="search-form">
           <label>
             Owner
-            <input id="owner" name="owner" required />
+            <select id="owner" name="owner" required>
+              <option value="">Select owner</option>
+            </select>
           </label>
           <label>
             Package
-            <input id="package" name="package" required />
+            <select id="package" name="package" required disabled>
+              <option value="">Select package</option>
+            </select>
           </label>
           <label>
             Scan ID
-            <input id="scan-id" name="scan_id" inputmode="numeric" />
+            <select id="scan-id" name="scan_id" disabled>
+              <option value="">Latest completed scan</option>
+            </select>
           </label>
           <label>
             Compare Scan ID
-            <input id="compare-scan-id" name="compare_scan_id" inputmode="numeric" />
+            <select id="compare-scan-id" name="compare_scan_id" disabled>
+              <option value="">None</option>
+            </select>
           </label>
           <label>
             Lookup

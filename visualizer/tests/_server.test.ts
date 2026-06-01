@@ -49,6 +49,47 @@ test("visualizer server serves graph API responses from a read-only database", a
   }
 });
 
+test("visualizer server serves owner, package, and scan selector API responses", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "ghcr-visualizer-server-"));
+  const databasePath = join(directory, "scan.sqlite");
+  const database = new Database(databasePath);
+  initializeSchema(database);
+  seedDatabase(database);
+  database.close();
+
+  let server;
+  try {
+    server = await startVisualizerServer({
+      databasePath,
+      host: "127.0.0.1",
+      port: 0
+    });
+
+    const ownersResponse = await fetch(`${server.url}/api/owners`);
+    const owners = (await ownersResponse.json()) as Array<{ owner: string }>;
+    assert.equal(ownersResponse.status, 200);
+    assert.deepEqual(owners, [{ owner: "acme" }]);
+
+    const packagesResponse = await fetch(`${server.url}/api/owners/acme/packages`);
+    const packages = (await packagesResponse.json()) as Array<{ packageName: string }>;
+    assert.equal(packagesResponse.status, 200);
+    assert.deepEqual(packages, [{ packageName: "demo" }]);
+
+    const scansResponse = await fetch(`${server.url}/api/packages/acme/demo/scans`);
+    const scans = (await scansResponse.json()) as Array<{ scanId: number; scanCompletedAt: string }>;
+    assert.equal(scansResponse.status, 200);
+    assert.deepEqual(scans, [
+      { scanId: 2, scanCompletedAt: "2026-05-30T10:00:00.000Z" },
+      { scanId: 1, scanCompletedAt: "2026-05-29T10:00:00.000Z" }
+    ]);
+  } finally {
+    if (server) {
+      await server.close();
+    }
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("visualizer server resolves runtime asset paths for source and built installs", () => {
   assert.deepEqual(_resolveRuntimePaths("file:///tmp/ghcr-manager/visualizer/src/_server.js"), {
     publicDirectory: "/tmp/ghcr-manager/visualizer/public",

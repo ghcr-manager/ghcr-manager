@@ -131,6 +131,14 @@ elements.form.addEventListener("submit", async (event) => {
   await loadGraphFromForm();
 });
 
+elements.owner.addEventListener("change", async () => {
+  await handleOwnerChange();
+});
+
+elements.packageName.addEventListener("change", async () => {
+  await handlePackageChange();
+});
+
 elements.expandNode.addEventListener("click", async () => {
   await expandSelectedNode();
 });
@@ -167,6 +175,8 @@ elements.zoomFit.addEventListener("click", () => {
 cy.on("tap", "node", async (event) => {
   await selectNode(event.target.id());
 });
+
+await initializeSelectors();
 
 async function loadGraphFromForm() {
   persistCurrentLayoutState();
@@ -344,6 +354,90 @@ function resolveUrl() {
   return url;
 }
 
+async function initializeSelectors() {
+  try {
+    setStatus("Loading owners...");
+    const owners = await fetchJson(new URL("/api/owners", window.location.origin));
+    replaceOptions(elements.owner, owners, "owner", "Select owner");
+    const ownerValues = owners.map((entry) => entry.owner);
+    const initialOwner =
+      _pickInitialValue(elements.owner.value, ownerValues) || (ownerValues.length === 1 ? ownerValues[0] : "");
+    elements.owner.value = initialOwner;
+    await handleOwnerChange({ preservePackageSelection: true, preserveScanSelection: true });
+    setStatus("");
+  } catch (error) {
+    if (error instanceof Error) {
+      setStatus(error.message);
+    }
+  }
+}
+
+async function handleOwnerChange(options = {}) {
+  const previousPackage = elements.packageName.value;
+  const previousScanId = elements.scanId.value;
+  const previousCompareScanId = elements.compareScanId.value;
+  resetSelect(elements.packageName, "Select package", true);
+  resetSelect(elements.scanId, "Latest completed scan", true);
+  resetSelect(elements.compareScanId, "None", true);
+
+  const owner = elements.owner.value;
+  if (!owner) {
+    return;
+  }
+
+  setStatus("Loading packages...");
+  const packages = await fetchJson(
+    new URL(`/api/owners/${encodeURIComponent(owner)}/packages`, window.location.origin)
+  );
+  replaceOptions(elements.packageName, packages, "packageName", "Select package");
+  const packageValues = packages.map((entry) => entry.packageName);
+  const initialPackage = options.preservePackageSelection
+    ? _pickInitialValue(previousPackage, packageValues) || (packageValues.length === 1 ? packageValues[0] : "")
+    : packageValues.length === 1
+      ? packageValues[0]
+      : "";
+  if (initialPackage) {
+    elements.packageName.value = initialPackage;
+  }
+
+  if (options.preserveScanSelection === true) {
+    elements.scanId.value = previousScanId;
+    elements.compareScanId.value = previousCompareScanId;
+  }
+  await handlePackageChange({
+    preserveScanSelection: options.preserveScanSelection === true,
+    previousScanId,
+    previousCompareScanId
+  });
+}
+
+async function handlePackageChange(options = {}) {
+  const previousScanId = options.previousScanId ?? elements.scanId.value;
+  const previousCompareScanId = options.previousCompareScanId ?? elements.compareScanId.value;
+  resetSelect(elements.scanId, "Latest completed scan", true);
+  resetSelect(elements.compareScanId, "None", true);
+
+  const owner = elements.owner.value;
+  const packageName = elements.packageName.value;
+  if (!owner || !packageName) {
+    return;
+  }
+
+  setStatus("Loading scans...");
+  const scans = await fetchJson(
+    new URL(
+      `/api/packages/${encodeURIComponent(owner)}/${encodeURIComponent(packageName)}/scans`,
+      window.location.origin
+    )
+  );
+  replaceScanOptions(scans, {
+    preserveSelection: options.preserveScanSelection === true,
+    previousScanId,
+    previousCompareScanId
+  });
+  setStatus("");
+}
+
 function packageBaseUrl(suffix) {
   const owner = encodeURIComponent(elements.owner.value.trim());
   const packageName = encodeURIComponent(elements.packageName.value.trim());
@@ -376,6 +470,58 @@ async function fetchJson(url) {
 
 function setStatus(message) {
   elements.status.textContent = message;
+}
+
+function replaceOptions(select, entries, valueKey, placeholderLabel) {
+  const selectedValue = select.value;
+  select.replaceChildren(buildOption("", placeholderLabel));
+  for (const entry of entries) {
+    select.append(buildOption(entry[valueKey], entry[valueKey]));
+  }
+  select.disabled = entries.length === 0;
+  select.value = _pickInitialValue(
+    selectedValue,
+    entries.map((entry) => entry[valueKey])
+  );
+}
+
+function replaceScanOptions(scans, options = {}) {
+  const selectedScanId = options.preserveSelection ? (options.previousScanId ?? "") : "";
+  const selectedCompareScanId = options.preserveSelection ? (options.previousCompareScanId ?? "") : "";
+
+  elements.scanId.replaceChildren(buildOption("", "Latest completed scan"));
+  elements.compareScanId.replaceChildren(buildOption("", "None"));
+  for (const scan of scans) {
+    const label = formatScanLabel(scan);
+    elements.scanId.append(buildOption(String(scan.scanId), label));
+    elements.compareScanId.append(buildOption(String(scan.scanId), label));
+  }
+
+  const scanValues = scans.map((scan) => String(scan.scanId));
+  elements.scanId.disabled = scans.length === 0;
+  elements.compareScanId.disabled = scans.length === 0;
+  elements.scanId.value = _pickInitialValue(selectedScanId, scanValues);
+  elements.compareScanId.value = _pickInitialValue(selectedCompareScanId, scanValues);
+}
+
+function buildOption(value, label) {
+  const option = document.createElement("option");
+  option.value = value;
+  option.textContent = label;
+  return option;
+}
+
+function resetSelect(select, placeholderLabel, disabled) {
+  select.replaceChildren(buildOption("", placeholderLabel));
+  select.disabled = disabled;
+}
+
+function formatScanLabel(scan) {
+  return `#${scan.scanId} ${scan.scanCompletedAt}`;
+}
+
+function _pickInitialValue(currentValue, allowedValues) {
+  return allowedValues.includes(currentValue) ? currentValue : "";
 }
 
 function buildGraphContext(graph) {

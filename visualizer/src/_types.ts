@@ -1,6 +1,19 @@
 export type GraphEdgeKind = "image-child" | "referrer" | "digest-tag-referrer";
 export type ChangeStatus = "unchanged" | "added" | "removed";
 
+export interface OwnerOption {
+  owner: string;
+}
+
+export interface PackageOption {
+  packageName: string;
+}
+
+export interface ScanOption {
+  scanId: number;
+  scanCompletedAt: string;
+}
+
 export interface GraphTag {
   name: string;
   changeStatus: ChangeStatus;

@@ -39,6 +39,20 @@ test("graph repository resolves the latest scan and manifest by tag", () => {
   }
 });
 
+test("graph repository lists owners, packages, and scans for selector dropdowns", () => {
+  const { repository, cleanup, olderScanId, newerScanId } = _createRepository();
+  try {
+    assert.deepEqual(repository.listOwners(), [{ owner: "acme" }]);
+    assert.deepEqual(repository.listPackages("acme"), [{ packageName: "demo" }]);
+    assert.deepEqual(repository.listScans("acme", "demo"), [
+      { scanId: newerScanId, scanCompletedAt: "2026-05-30T10:00:00.000Z" },
+      { scanId: olderScanId, scanCompletedAt: "2026-05-29T10:00:00.000Z" }
+    ]);
+  } finally {
+    cleanup();
+  }
+});
+
 test("graph repository returns visible intra-neighborhood edges and omits digest tags from labels", () => {
   const { repository, cleanup } = _createRepository();
   try {
