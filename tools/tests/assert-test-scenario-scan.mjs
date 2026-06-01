@@ -4,6 +4,7 @@
 import assert from "node:assert/strict";
 import Database from "better-sqlite3";
 import { scenarios } from "./test-scenarios/_definitions.mjs";
+import { resolveScenarioTagNames } from "./test-scenarios/_resolve-tag-names.mjs";
 
 const scenarioId = process.argv[2];
 const dbPath = process.argv[3];
@@ -25,9 +26,7 @@ if (!latestScanAssertions && scanAssertions.length === 0 && signatureSubjectAsse
   process.exit(0);
 }
 
-const tagNames = Object.fromEntries(
-  Object.entries(scenario.tagNames ?? {}).map(([key, value]) => [key, `${scenario.id}--${value}`])
-);
+const tagNames = resolveScenarioTagNames(scenario);
 const database = new Database(dbPath, { readonly: true });
 
 const latestScan = database
