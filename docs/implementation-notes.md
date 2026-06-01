@@ -74,6 +74,9 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
     package name already carries the scenario identity, so repeating it inside each tag was removed
   - `cleanup_root_decisions.overlap_digest` is being kept as the compact representative overlap used by the single-row
     blocked decision summary, while `cleanup_protected_root_blocks` remains the more detailed blocking table
+  - graph cleanup expectations were corrected for shared-image tag deletion:
+    - deleting `image-a` in `2images` removes only `image-a`; `multiarch` remains tagged because it was not selected
+    - deleting `image-a` in `2multiarch` removes only `image-a`; `multiarch-a` remains tagged for the same reason
 - Scenario maintenance note:
   - test-scenario definitions are now split into cleanup and graph modules under `tools/tests/test-scenarios/`
   - the GHCR test-scenario seed action is now a dispatcher that calls small repo-local seed scripts plus a dedicated

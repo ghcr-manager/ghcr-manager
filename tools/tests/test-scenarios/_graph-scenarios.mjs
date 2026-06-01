@@ -56,11 +56,11 @@ const _cleanupOperationsByBaseCase = {
     {
       idSuffix: "delete-image-a",
       deleteTagKeys: ["imageA"],
-      presentTagNameKeys: ["imageB", "keepDummy"],
-      absentTagNameKeys: ["imageA", "multiarch"],
+      presentTagNameKeys: ["imageB", "multiarch", "keepDummy"],
+      absentTagNameKeys: ["imageA"],
       counts: ({ startCounts }) => ({
         manifestCount: startCounts.manifestCount,
-        tagCount: 2
+        tagCount: startCounts.tagCount - 1
       })
     },
     {
@@ -85,11 +85,11 @@ const _cleanupOperationsByBaseCase = {
     {
       idSuffix: "delete-image-a",
       deleteTagKeys: ["imageA"],
-      presentTagNameKeys: ["imageB", "imageC", "multiarchB", "keepDummy"],
-      absentTagNameKeys: ["imageA", "multiarchA"],
+      presentTagNameKeys: ["imageB", "imageC", "multiarchA", "multiarchB", "keepDummy"],
+      absentTagNameKeys: ["imageA"],
       counts: ({ startCounts }) => ({
         manifestCount: startCounts.manifestCount,
-        tagCount: 4
+        tagCount: startCounts.tagCount - 1
       })
     },
     {

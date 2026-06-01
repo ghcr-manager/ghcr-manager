@@ -1,10 +1,9 @@
 # Intended Behavior: `2images base` Cleanup Cases
 
-This note locks down the intended behavior for the simplest shared-manifest graph that is
-more complex than `1image`.
+This note locks down the intended behavior for the simplest shared-manifest graph that is more complex than `1image`.
 
-It is meant as the semantic baseline for the cleanup-rethink work before looking at
-attestations, cosign, or the `2multiarch` overlap case.
+It is meant as the semantic baseline for the cleanup-rethink work before looking at attestations, cosign, or the
+`2multiarch` overlap case.
 
 ## Start Graph
 
@@ -59,12 +58,12 @@ Delete request:
 Expected remaining tags:
 
 - `image-b`
+- `multiarch`
 - `keep-dummy`
 
 Expected removed tags:
 
 - `image-a`
-- `multiarch`
 
 Expected remaining manifests:
 
@@ -76,14 +75,14 @@ Expected remaining manifests:
 Expected end counts:
 
 - manifests: `4`
-- tags: `2`
+- tags: `3`
 
 Interpretation:
 
 - `image-a` is untagged, not fully deleted.
-- `multiarch` must also disappear as a tag because its tagged manifest overlaps the delete target through
-  `A`, but the multi-arch manifest `M` still remains present because `image-b` still depends on
-  that shared graph.
+- `multiarch` stays tagged because it was not requested for deletion.
+- The multi-arch manifest `M` still remains present because the surviving `multiarch` tag still points to it, and `M`
+  still references `A` and `B`.
 
 This is intentionally an untag/share-preserve result, not a full branch deletion.
 
@@ -174,18 +173,15 @@ These three cases define the baseline answers to:
 - when a shared wrapper manifest may be deleted
 - when a child image becomes deletable because all tagged paths to it are gone
 
-If the cleanup logic cannot express these three cases cleanly, the later
-attestation/cosign variants will stay ambiguous and hard to debug.
+If the cleanup logic cannot express these three cases cleanly, the later attestation/cosign variants will stay ambiguous
+and hard to debug.
 
 ## Relation To Current Test Expectations
 
 These expectations match the current scenario table that drove the new graph cleanup rows:
 
-- `delete-image-a`:
-  end manifests = start manifests, end tags = `2`
-- `delete-multiarch`:
-  like corresponding `1image` start scenario times `2`
-- `delete-image-a and multiarch`:
-  like corresponding `1image` start scenario but with `image-b` tag
+- `delete-image-a`: end manifests = start manifests, end tags = `3`
+- `delete-multiarch`: like corresponding `1image` start scenario times `2`
+- `delete-image-a and multiarch`: like corresponding `1image` start scenario but with `image-b` tag
 
 The wording above is just the explicit graph interpretation of that compact table.
