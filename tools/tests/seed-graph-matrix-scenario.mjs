@@ -63,7 +63,9 @@ if (scenario.includeCosign) {
   const signTargets = new Set();
   for (const image of images) {
     signTargets.add(image.taggedDigest);
-    signTargets.add(image.leafDigest);
+    if (!scenario.includeAttestations) {
+      signTargets.add(image.leafDigest);
+    }
   }
   for (const index of indexes) {
     signTargets.add(index.digest);

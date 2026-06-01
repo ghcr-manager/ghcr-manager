@@ -85,6 +85,8 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
   - graph-matrix attestation variants now seed final image tags as provenance-bearing indexes instead of retagging the
     runnable image manifests; the new baseline is the observed `single-attestation` package shape where attestation
     moves the human tag from the image manifest to the index that connects image plus attestation
+  - graph-matrix mixed cosign+attestation image branches now sign only the tagged provenance-bearing index digest, not
+    the leaf image digest, to match the observed `single-attestation` package branch shape
   - `test_setup-package-single-attestation.yml` now publishes the final multi-arch and per-platform tags inline with
     `docker buildx imagetools create --dry-run`, `regctl manifest put`, and `regctl image copy` so that attestation-only
     setup no longer depends on the external publish action that forces cosign
