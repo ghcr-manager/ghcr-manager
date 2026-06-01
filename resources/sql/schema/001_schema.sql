@@ -149,6 +149,7 @@ CREATE TABLE IF NOT EXISTS cleanup_root_decisions (
   CHECK(validation_status IN ('fully-deletable', 'blocked', 'untag-only')),
   CHECK(validation_reason_code IN (
     'untag-only-partial-tag-match',
+    'untag-only-retained-manifest',
     'fully-deletable-no-retained-overlap',
     'blocked-overlap-with-retained-root'
   )),

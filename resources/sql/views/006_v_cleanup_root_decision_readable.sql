@@ -46,6 +46,7 @@ SELECT
   CASE decision.validation_reason_code
     WHEN 'fully-deletable-no-retained-overlap' THEN 'no retained root overlaps this closure'
     WHEN 'untag-only-partial-tag-match' THEN 'matched tags cover only part of the root tag set'
+    WHEN 'untag-only-retained-manifest' THEN 'selected tags can be detached but the manifest is still needed'
     WHEN 'blocked-overlap-with-retained-root' THEN 'a retained root still requires an overlapping manifest'
   END AS validation_reason_code_label,
   decision.validation_reason,
