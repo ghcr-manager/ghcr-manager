@@ -18,8 +18,9 @@ if (!scenario) {
 }
 
 const scanAssertions = scenario.scanAssertions ?? [];
+const latestScanAssertions = scenario.latestScanAssertions;
 const signatureSubjectAssertions = scenario.signatureSubjectAssertions ?? [];
-if (scanAssertions.length === 0 && signatureSubjectAssertions.length === 0) {
+if (!latestScanAssertions && scanAssertions.length === 0 && signatureSubjectAssertions.length === 0) {
   process.stdout.write(`No scan assertions configured for scenario '${scenarioId}'.\n`);
   process.exit(0);
 }
@@ -42,6 +43,52 @@ const latestScan = database
   .get();
 
 assert.ok(latestScan, `database '${dbPath}' did not contain a completed package scan`);
+
+if (latestScanAssertions) {
+  const counts = database
+    .prepare(
+      `
+        SELECT
+          (SELECT COUNT(*)
+           FROM manifests
+           WHERE scan_id = ?) AS manifestCount,
+          (SELECT COUNT(DISTINCT tag)
+           FROM tags
+           WHERE scan_id = ?) AS tagCount
+      `
+    )
+    .get(latestScan.scan_id, latestScan.scan_id);
+
+  assert.equal(
+    counts.manifestCount,
+    latestScanAssertions.manifestCount,
+    `scan ${latestScan.scan_id} had an unexpected manifest count`
+  );
+  assert.equal(
+    counts.tagCount,
+    latestScanAssertions.tagCount,
+    `scan ${latestScan.scan_id} had an unexpected tag count`
+  );
+
+  for (const tagNameKey of latestScanAssertions.absentTagNameKeys ?? []) {
+    const tag = tagNames[tagNameKey];
+    assert.ok(tag, `scenario '${scenarioId}' is missing tag '${tagNameKey}' for latest scan assertions`);
+
+    const row = database
+      .prepare(
+        `
+          SELECT 1
+          FROM tags
+          WHERE scan_id = ?
+            AND tag = ?
+          LIMIT 1
+        `
+      )
+      .get(latestScan.scan_id, tag);
+
+    assert.equal(row, undefined, `scan ${latestScan.scan_id} unexpectedly retained tag '${tag}'`);
+  }
+}
 
 for (const scanAssertion of scanAssertions) {
   const tag = tagNames[scanAssertion.tagNameKey];
@@ -160,5 +207,5 @@ for (const signatureAssertion of signatureSubjectAssertions) {
 }
 
 process.stdout.write(
-  `Verified ${scanAssertions.length} scan assertion(s) and ${signatureSubjectAssertions.length} signature assertion(s) for scenario '${scenarioId}'.\n`
+  `Verified ${latestScanAssertions ? 1 : 0} latest-scan assertion set(s), ${scanAssertions.length} scan assertion(s), and ${signatureSubjectAssertions.length} signature assertion(s) for scenario '${scenarioId}'.\n`
 );

@@ -1,9 +1,18 @@
 name: "Test: Scenario Graph Matrix"
-run-name: "Test Scenario Graph Matrix"
+run-name: "Test Scenario Graph Matrix (executors: ${{ inputs.executors }})"
 
 "on":
   workflow_dispatch:
     inputs:
+      executors:
+        description: Which executor matrix rows to include in this run.
+        required: true
+        default: ghcr-manager
+        type: choice
+        options:
+          - all
+          - ghcr-manager
+          - ghcr-cleanup-action
       upload_artifacts:
         description: Upload the final rescan DB artifact from inside the action.
         required: false
@@ -16,6 +25,10 @@ run-name: "Test Scenario Graph Matrix"
         type: string
   workflow_call:
     inputs:
+      executors:
+        required: false
+        default: ghcr-manager
+        type: string
       upload_artifacts:
         required: false
         default: true
@@ -42,10 +55,15 @@ jobs:
 
       - name: Render graph scenario matrix
         id: matrix
+        env:
+          EXECUTORS: ${{ inputs.executors }}
         shell: bash
         run: |
           set -euo pipefail
           matrix_json="$(node tools/tests/render-graph-scenario-matrix.mjs)"
+          if [[ "$EXECUTORS" != "all" ]]; then
+            matrix_json="$(jq -c --arg executor "$EXECUTORS" '.include |= map(select(.executor == $executor))' <<< "$matrix_json")"
+          fi
           echo "matrix=$matrix_json" >> "$GITHUB_OUTPUT"
 
   execute:
@@ -60,7 +78,7 @@ jobs:
       executor: ${{ matrix.executor }}
       upload_artifacts: ${{ inputs.upload_artifacts }}
       artifact_retention_days: ${{ inputs.artifact_retention_days }}
-      package_name_suffix: graph-matrix
+      package_name_suffix: ${{ matrix.executor }}
 
   bundle-db-artifacts:
     if: ${{ always() && inputs.upload_artifacts }}

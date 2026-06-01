@@ -90,6 +90,8 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
   - `test_setup-package-single-attestation.yml` now publishes the final multi-arch and per-platform tags inline with
     `docker buildx imagetools create --dry-run`, `regctl manifest put`, and `regctl image copy` so that attestation-only
     setup no longer depends on the external publish action that forces cosign
+  - graph-matrix cleanup coverage now expands each seeded graph into generated delete-tag scenarios across both
+    executors, and latest-scan assertions can now validate expected manifest/tag counts plus absent tags after cleanup
 - Scenario workflow concurrency note:
   - cleanup scenario execution is serialized per `scenario + executor`
   - user-owner cleanup now has its own dedicated concurrency group because it mutates one fixed package
