@@ -10,7 +10,7 @@
     <main class="layout">
       <section class="controls">
         <h1>ghcr-manager visualizer</h1>
-        <form id="search-form">
+        <form id="search-form" autocomplete="off">
           <label>
             Owner
             <select id="owner" name="owner" required>
@@ -44,7 +44,7 @@
           </label>
           <label>
             Value
-            <input id="lookup-value" name="lookup_value" required />
+            <input id="lookup-value" name="lookup_value" list="lookup-suggestions" autocomplete="off" required />
           </label>
           <label>
             Depth
@@ -103,6 +103,7 @@
         </dl>
       </aside>
     </main>
+    <datalist id="lookup-suggestions"></datalist>
     <dialog id="raw-json-dialog" class="raw-json-dialog">
       <div class="raw-json-dialog__header">
         <h2>Raw JSON</h2>

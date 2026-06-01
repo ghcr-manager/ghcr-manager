@@ -14,6 +14,10 @@ export interface ScanOption {
   scanCompletedAt: string;
 }
 
+export interface TagOption {
+  tagName: string;
+}
+
 export interface GraphTag {
   name: string;
   changeStatus: ChangeStatus;

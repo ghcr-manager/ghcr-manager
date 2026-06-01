@@ -8,6 +8,7 @@ const elements = {
   compareScanId: document.querySelector("#compare-scan-id"),
   lookupMode: document.querySelector("#lookup-mode"),
   lookupValue: document.querySelector("#lookup-value"),
+  lookupSuggestions: document.querySelector("#lookup-suggestions"),
   depth: document.querySelector("#depth"),
   status: document.querySelector("#status"),
   detailsEmpty: document.querySelector("#details-empty"),
@@ -39,7 +40,8 @@ const state = {
   positionsByDigest: new Map(),
   positionsByViewKey: new Map(),
   selectedDigest: null,
-  selectedManifestDetails: null
+  selectedManifestDetails: null,
+  lookupSuggestionRequestId: 0
 };
 
 const _ZOOM_STEP = 1.15;
@@ -137,6 +139,18 @@ elements.owner.addEventListener("change", async () => {
 
 elements.packageName.addEventListener("change", async () => {
   await handlePackageChange();
+});
+
+elements.scanId.addEventListener("change", () => {
+  clearLookupSuggestions();
+});
+
+elements.lookupMode.addEventListener("change", () => {
+  clearLookupSuggestions();
+});
+
+elements.lookupValue.addEventListener("input", async () => {
+  await updateLookupSuggestions();
 });
 
 elements.expandNode.addEventListener("click", async () => {
@@ -379,6 +393,7 @@ async function handleOwnerChange(options = {}) {
   resetSelect(elements.packageName, "Select package", true);
   resetSelect(elements.scanId, "Latest completed scan", true);
   resetSelect(elements.compareScanId, "None", true);
+  clearLookupSuggestions();
 
   const owner = elements.owner.value;
   if (!owner) {
@@ -416,6 +431,7 @@ async function handlePackageChange(options = {}) {
   const previousCompareScanId = options.previousCompareScanId ?? elements.compareScanId.value;
   resetSelect(elements.scanId, "Latest completed scan", true);
   resetSelect(elements.compareScanId, "None", true);
+  clearLookupSuggestions();
 
   const owner = elements.owner.value;
   const packageName = elements.packageName.value;
@@ -436,6 +452,39 @@ async function handlePackageChange(options = {}) {
     previousCompareScanId
   });
   setStatus("");
+}
+
+async function updateLookupSuggestions() {
+  if (elements.lookupMode.value !== "tag") {
+    clearLookupSuggestions();
+    return;
+  }
+
+  const owner = elements.owner.value;
+  const packageName = elements.packageName.value;
+  const query = elements.lookupValue.value.trim();
+  if (!owner || !packageName || query === "") {
+    clearLookupSuggestions();
+    return;
+  }
+
+  const requestId = ++state.lookupSuggestionRequestId;
+  const url = packageBaseUrl("/tags");
+  appendOptionalScanParams(url);
+  url.searchParams.set("q", query);
+  url.searchParams.set("limit", "20");
+  try {
+    const tags = await fetchJson(url);
+    if (requestId !== state.lookupSuggestionRequestId) {
+      return;
+    }
+
+    replaceLookupSuggestions(tags.map((entry) => entry.tagName));
+  } catch {
+    if (requestId === state.lookupSuggestionRequestId) {
+      clearLookupSuggestions();
+    }
+  }
 }
 
 function packageBaseUrl(suffix) {
@@ -470,6 +519,15 @@ async function fetchJson(url) {
 
 function setStatus(message) {
   elements.status.textContent = message;
+}
+
+function replaceLookupSuggestions(values) {
+  elements.lookupSuggestions.replaceChildren(...values.map((value) => buildOption(value, value)));
+}
+
+function clearLookupSuggestions() {
+  state.lookupSuggestionRequestId += 1;
+  elements.lookupSuggestions.replaceChildren();
 }
 
 function replaceOptions(select, entries, valueKey, placeholderLabel) {

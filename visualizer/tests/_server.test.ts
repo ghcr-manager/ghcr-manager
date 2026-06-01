@@ -82,6 +82,11 @@ test("visualizer server serves owner, package, and scan selector API responses",
       { scanId: 2, scanCompletedAt: "2026-05-30T10:00:00.000Z" },
       { scanId: 1, scanCompletedAt: "2026-05-29T10:00:00.000Z" }
     ]);
+
+    const tagsResponse = await fetch(`${server.url}/api/packages/acme/demo/tags?scan_id=2&q=single&limit=20`);
+    const tags = (await tagsResponse.json()) as Array<{ tagName: string }>;
+    assert.equal(tagsResponse.status, 200);
+    assert.deepEqual(tags, [{ tagName: "single" }]);
   } finally {
     if (server) {
       await server.close();

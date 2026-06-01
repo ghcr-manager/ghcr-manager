@@ -124,6 +124,15 @@ function _handleApi(repository: GraphRepository, url: URL): unknown {
   const scanId = _parseOptionalInteger(url.searchParams.get("scan_id"));
   const compareScanId = _parseOptionalInteger(url.searchParams.get("compare_scan_id"));
 
+  if (segments.length === 5 && segments[4] === "tags") {
+    return repository.listTags(
+      owner,
+      packageName,
+      scanId,
+      url.searchParams.get("q") ?? "",
+      _parseOptionalInteger(url.searchParams.get("limit")) ?? 20
+    );
+  }
   if (segments.length === 6 && segments[4] === "scans" && segments[5] === "latest") {
     return { scanId: repository.resolveLatestScanId(owner, packageName) };
   }

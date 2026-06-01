@@ -8,7 +8,8 @@ import type {
   ManifestResolution,
   OwnerOption,
   PackageOption,
-  ScanOption
+  ScanOption,
+  TagOption
 } from "./_types.js";
 
 interface _ManifestRow {
@@ -94,6 +95,29 @@ export class GraphRepository {
         `
       )
       .all(owner, packageName) as ScanOption[];
+  }
+
+  listTags(owner: string, packageName: string, scanId: number | undefined, query: string, limit: number): TagOption[] {
+    const resolvedScanId = this.resolveScanId(owner, packageName, scanId);
+    const normalizedLimit = Math.max(1, Math.min(limit, 50));
+    const normalizedQuery = query.trim();
+    if (normalizedQuery === "") {
+      return [];
+    }
+
+    return this.#database
+      .prepare(
+        `
+          SELECT tag AS tagName
+          FROM tags
+          WHERE scan_id = ?
+            AND is_digest_tag = 0
+            AND tag LIKE ? ESCAPE '\\'
+          ORDER BY tag
+          LIMIT ?
+        `
+      )
+      .all(resolvedScanId, `%${_escapeLikeValue(normalizedQuery)}%`, normalizedLimit) as TagOption[];
   }
 
   resolveLatestScanId(owner: string, packageName: string): number {
@@ -528,4 +552,8 @@ function _normalizePlatformPart(value: string | null): string | null {
   }
 
   return value;
+}
+
+function _escapeLikeValue(value: string): string {
+  return value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
 }

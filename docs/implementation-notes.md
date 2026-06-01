@@ -124,6 +124,8 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
   - root npm scripts and Dependabot now include the visualizer workspace
   - owner, package, and scan selectors are now backed by DB-driven dropdown endpoints; tag lookup stays as free text for
     now because package tag sets can grow too large for a naive full dropdown
+  - tag lookup now adds capped scan-scoped suggestions via a small prefix-search API and a datalist-backed text input,
+    while still preserving plain text entry as the fallback for large tag sets
   - same owner/package/scan/center reloads now preserve prior node positions by digest and skip force relayout when the
     visible node set is unchanged
   - node click now selects only; the details panel owns explicit `Expand 1 hop` and `Center here` actions

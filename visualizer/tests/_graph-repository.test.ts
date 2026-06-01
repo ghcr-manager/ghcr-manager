@@ -53,6 +53,26 @@ test("graph repository lists owners, packages, and scans for selector dropdowns"
   }
 });
 
+test("graph repository lists capped scan-scoped tag suggestions by substring", () => {
+  const { repository, cleanup, olderScanId, newerScanId } = _createRepository();
+  try {
+    assert.deepEqual(repository.listTags("acme", "demo", olderScanId, "single", 20), [
+      { tagName: "single" },
+      { tagName: "single-amd64" }
+    ]);
+    assert.deepEqual(repository.listTags("acme", "demo", newerScanId, "single", 20), [
+      { tagName: "single" },
+      { tagName: "single-arm64" }
+    ]);
+    assert.deepEqual(repository.listTags("acme", "demo", newerScanId, "arm64", 20), [{ tagName: "single-arm64" }]);
+    assert.deepEqual(repository.listTags("acme", "demo", newerScanId, "moved", 20), [{ tagName: "moved-tag" }]);
+    assert.deepEqual(repository.listTags("acme", "demo", newerScanId, "", 20), []);
+    assert.deepEqual(repository.listTags("acme", "demo", newerScanId, "sha256", 20), []);
+  } finally {
+    cleanup();
+  }
+});
+
 test("graph repository returns visible intra-neighborhood edges and omits digest tags from labels", () => {
   const { repository, cleanup } = _createRepository();
   try {
