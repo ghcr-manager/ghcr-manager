@@ -14,6 +14,7 @@ if (!scenarioId || !imageRef) {
 }
 
 const scenario = _resolveScenario(scenarioId);
+const dummyImage = _buildImage(imageRef, "keep-dummy", `${scenarioId} keep-dummy`, "plain", "amd64");
 const images = [];
 for (const imageSpec of scenario.images) {
   const image = _buildImage(
@@ -81,6 +82,7 @@ process.stdout.write(
     {
       scenarioId,
       imageRef,
+      dummyTag: dummyImage.tag,
       imageTags: images.map((entry) => entry.tag),
       indexTags: indexes.map((entry) => entry.tag)
     },
