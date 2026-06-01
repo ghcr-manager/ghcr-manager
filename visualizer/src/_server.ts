@@ -129,6 +129,7 @@ function _handleApi(repository: GraphRepository, url: URL): unknown {
       owner,
       packageName,
       scanId,
+      compareScanId,
       url.searchParams.get("q") ?? "",
       _parseOptionalInteger(url.searchParams.get("limit")) ?? 20
     );

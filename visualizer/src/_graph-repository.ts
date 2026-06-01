@@ -97,27 +97,36 @@ export class GraphRepository {
       .all(owner, packageName) as ScanOption[];
   }
 
-  listTags(owner: string, packageName: string, scanId: number | undefined, query: string, limit: number): TagOption[] {
-    const resolvedScanId = this.resolveScanId(owner, packageName, scanId);
+  listTags(
+    owner: string,
+    packageName: string,
+    scanId: number | undefined,
+    compareScanId: number | undefined,
+    query: string,
+    limit: number
+  ): TagOption[] {
+    const resolvedScans = this.#resolveScans(owner, packageName, scanId, compareScanId);
     const normalizedLimit = Math.max(1, Math.min(limit, 50));
     const normalizedQuery = query.trim();
     if (normalizedQuery === "") {
       return [];
     }
 
+    const scanInClause = placeholders(resolvedScans.scanIds.length);
+
     return this.#database
       .prepare(
         `
-          SELECT tag AS tagName
+          SELECT DISTINCT tag AS tagName
           FROM tags
-          WHERE scan_id = ?
+          WHERE scan_id IN (${scanInClause})
             AND is_digest_tag = 0
             AND tag LIKE ? ESCAPE '\\'
           ORDER BY tag
           LIMIT ?
         `
       )
-      .all(resolvedScanId, `%${_escapeLikeValue(normalizedQuery)}%`, normalizedLimit) as TagOption[];
+      .all(...resolvedScans.scanIds, `%${_escapeLikeValue(normalizedQuery)}%`, normalizedLimit) as TagOption[];
   }
 
   resolveLatestScanId(owner: string, packageName: string): number {
@@ -172,7 +181,9 @@ export class GraphRepository {
     args: { digest?: string; tag?: string }
   ): ManifestResolution {
     const resolvedScans = this.#resolveScans(owner, packageName, scanId, compareScanId);
-    const digest = args.digest ?? this.#resolveDigestByTag(resolvedScans.scanId, args.tag);
+    const digest =
+      args.digest ??
+      this.#resolveDigestByTag(resolvedScans.scanIds, args.tag, resolvedScans.scanId, resolvedScans.compareScanId);
     const node = this.#readManifestMap(
       resolvedScans.scanIds,
       [digest],
@@ -304,7 +315,7 @@ export class GraphRepository {
           WHERE owner = ?
             AND package_name = ?
             AND scan_id IN (?, ?)
-          ORDER BY scan_completed_at ASC, scan_id ASC
+          ORDER BY scan_completed_at, scan_id
         `
       )
       .all(owner, packageName, resolvedScanId, resolvedCompareScanId) as _ScanOrderRow[];
@@ -321,10 +332,17 @@ export class GraphRepository {
     };
   }
 
-  #resolveDigestByTag(scanId: number, tag: string | undefined): string {
+  #resolveDigestByTag(
+    scanIds: number[],
+    tag: string | undefined,
+    preferredScanId: number,
+    fallbackScanId: number | undefined
+  ): string {
     if (!tag) {
       throw new Error("either digest or tag is required");
     }
+
+    const scanInClause = placeholders(scanIds.length);
 
     const row = this.#database
       .prepare(
@@ -334,14 +352,22 @@ export class GraphRepository {
           JOIN manifests manifest
             ON manifest.scan_id = tags.scan_id
            AND manifest.version_id = tags.version_id
-          WHERE tags.scan_id = ?
+          WHERE tags.scan_id IN (${scanInClause})
             AND tags.tag = ?
+          ORDER BY
+            CASE
+              WHEN tags.scan_id = ? THEN 0
+              WHEN ? IS NOT NULL AND tags.scan_id = ? THEN 1
+              ELSE 2
+            END
           LIMIT 1
         `
       )
-      .get(scanId, tag) as { digest: string } | undefined;
+      .get(...scanIds, tag, preferredScanId, fallbackScanId ?? null, fallbackScanId ?? -1) as
+      | { digest: string }
+      | undefined;
     if (!row) {
-      throw new Error(`tag ${tag} was not found in scan ${scanId}`);
+      throw new Error(`tag ${tag} was not found in selected scan context`);
     }
 
     return row.digest;

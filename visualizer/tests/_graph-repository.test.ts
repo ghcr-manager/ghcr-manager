@@ -39,6 +39,23 @@ test("graph repository resolves the latest scan and manifest by tag", () => {
   }
 });
 
+test("graph repository resolves compare-only tags and prefers the primary scan when a tag moved", () => {
+  const { repository, cleanup, olderScanId, newerScanId } = _createRepository();
+  try {
+    const compareOnlyManifest = repository.resolveManifest("acme", "demo", olderScanId, newerScanId, {
+      tag: "single-arm64"
+    });
+    assert.equal(compareOnlyManifest.digest, "sha256:arm64");
+
+    const movedTagManifest = repository.resolveManifest("acme", "demo", newerScanId, olderScanId, {
+      tag: "moved-tag"
+    });
+    assert.equal(movedTagManifest.digest, "sha256:arm64");
+  } finally {
+    cleanup();
+  }
+});
+
 test("graph repository lists owners, packages, and scans for selector dropdowns", () => {
   const { repository, cleanup, olderScanId, newerScanId } = _createRepository();
   try {
@@ -53,21 +70,30 @@ test("graph repository lists owners, packages, and scans for selector dropdowns"
   }
 });
 
-test("graph repository lists capped scan-scoped tag suggestions by substring", () => {
+test("graph repository lists capped compare-aware tag suggestions by substring", () => {
   const { repository, cleanup, olderScanId, newerScanId } = _createRepository();
   try {
-    assert.deepEqual(repository.listTags("acme", "demo", olderScanId, "single", 20), [
+    assert.deepEqual(repository.listTags("acme", "demo", olderScanId, undefined, "single", 20), [
       { tagName: "single" },
       { tagName: "single-amd64" }
     ]);
-    assert.deepEqual(repository.listTags("acme", "demo", newerScanId, "single", 20), [
+    assert.deepEqual(repository.listTags("acme", "demo", newerScanId, undefined, "single", 20), [
       { tagName: "single" },
       { tagName: "single-arm64" }
     ]);
-    assert.deepEqual(repository.listTags("acme", "demo", newerScanId, "arm64", 20), [{ tagName: "single-arm64" }]);
-    assert.deepEqual(repository.listTags("acme", "demo", newerScanId, "moved", 20), [{ tagName: "moved-tag" }]);
-    assert.deepEqual(repository.listTags("acme", "demo", newerScanId, "", 20), []);
-    assert.deepEqual(repository.listTags("acme", "demo", newerScanId, "sha256", 20), []);
+    assert.deepEqual(repository.listTags("acme", "demo", newerScanId, olderScanId, "single", 20), [
+      { tagName: "single" },
+      { tagName: "single-amd64" },
+      { tagName: "single-arm64" }
+    ]);
+    assert.deepEqual(repository.listTags("acme", "demo", newerScanId, olderScanId, "arm64", 20), [
+      { tagName: "single-arm64" }
+    ]);
+    assert.deepEqual(repository.listTags("acme", "demo", newerScanId, olderScanId, "moved", 20), [
+      { tagName: "moved-tag" }
+    ]);
+    assert.deepEqual(repository.listTags("acme", "demo", newerScanId, olderScanId, "", 20), []);
+    assert.deepEqual(repository.listTags("acme", "demo", newerScanId, olderScanId, "sha256", 20), []);
   } finally {
     cleanup();
   }
