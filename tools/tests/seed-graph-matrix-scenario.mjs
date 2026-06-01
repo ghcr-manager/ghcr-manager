@@ -14,47 +14,61 @@ if (!scenarioId || !imageRef) {
 }
 
 const scenario = _resolveScenario(scenarioId);
-const imageDigests = [];
+const images = [];
 for (const imageSpec of scenario.images) {
-  const digest = _buildImage(
+  const image = _buildImage(
     imageRef,
     imageSpec.tag,
     `${scenarioId} ${imageSpec.tag}`,
-    scenario.includeAttestations ? "with-provenance" : "plain"
+    scenario.includeAttestations ? "with-provenance" : "plain",
+    imageSpec.architecture
   );
-  imageDigests.push({
+  images.push({
     ...imageSpec,
-    digest
+    ...image
   });
 }
 
-const indexDigests = [];
+const indexes = [];
 for (const indexSpec of scenario.indexes) {
-  await publishSyntheticIndex({
-    owner: _resolveOwner(imageRef),
-    packageName: _resolvePackageName(imageRef),
-    imageRef,
-    registryUsername: "",
-    token: "",
-    tag: indexSpec.tag,
-    members: indexSpec.members.map((member) => ({
-      digest: imageDigests[member.imageIndex].digest,
-      os: "linux",
-      architecture: member.architecture
-    }))
-  });
-  indexDigests.push({
+  if (scenario.includeAttestations) {
+    _publishMultiArchIndex(
+      imageRef,
+      indexSpec.tag,
+      indexSpec.members.map((member) => images[member.imageIndex].taggedDigest)
+    );
+  } else {
+    await publishSyntheticIndex({
+      owner: _resolveOwner(imageRef),
+      packageName: _resolvePackageName(imageRef),
+      imageRef,
+      registryUsername: "",
+      token: "",
+      tag: indexSpec.tag,
+      members: indexSpec.members.map((member) => ({
+        digest: images[member.imageIndex].taggedDigest,
+        os: "linux",
+        architecture: member.architecture
+      }))
+    });
+  }
+  indexes.push({
     tag: indexSpec.tag,
     digest: inspectDigest(`${imageRef}:${indexSpec.tag}`)
   });
 }
 
 if (scenario.includeCosign) {
-  for (const imageSpec of imageDigests) {
-    _cosignSign(`${imageRef}@${imageSpec.digest}`);
+  const signTargets = new Set();
+  for (const image of images) {
+    signTargets.add(image.taggedDigest);
+    signTargets.add(image.leafDigest);
   }
-  for (const indexSpec of indexDigests) {
-    _cosignSign(`${imageRef}@${indexSpec.digest}`);
+  for (const index of indexes) {
+    signTargets.add(index.digest);
+  }
+  for (const digest of signTargets) {
+    _cosignSign(`${imageRef}@${digest}`);
   }
 }
 
@@ -67,8 +81,8 @@ process.stdout.write(
     {
       scenarioId,
       imageRef,
-      imageTags: imageDigests.map((entry) => entry.tag),
-      indexTags: indexDigests.map((entry) => entry.tag)
+      imageTags: images.map((entry) => entry.tag),
+      indexTags: indexes.map((entry) => entry.tag)
     },
     null,
     2
@@ -81,10 +95,17 @@ function _resolveScenario(inputScenarioId) {
 
   const images =
     baseCase === "1image"
-      ? [{ tag: "image-a" }]
+      ? [{ tag: "image-a", architecture: "amd64" }]
       : baseCase === "2images"
-        ? [{ tag: "image-a" }, { tag: "image-b" }]
-        : [{ tag: "image-a" }, { tag: "image-b" }, { tag: "image-c" }];
+        ? [
+            { tag: "image-a", architecture: "amd64" },
+            { tag: "image-b", architecture: "arm64" }
+          ]
+        : [
+            { tag: "image-a", architecture: "amd64" },
+            { tag: "image-b", architecture: "arm64" },
+            { tag: "image-c", architecture: "ppc64le" }
+          ];
 
   const indexes =
     baseCase === "1image"
@@ -124,45 +145,35 @@ function _resolveScenario(inputScenarioId) {
   };
 }
 
-function _buildImage(imageRefValue, tag, payload, mode) {
+function _buildImage(imageRefValue, tag, payload, mode, architecture) {
   const contextDirectory = mkdtempSync(join(tmpdir(), "ghcr-graph-matrix-image-"));
   const fixtureDirectory = resolve(process.cwd(), "tools", "tests", "fixtures", "minimal-image");
   cpSync(fixtureDirectory, contextDirectory, { recursive: true });
   writeFileSync(join(contextDirectory, "payload.txt"), `${payload}\n`);
   try {
     if (mode === "with-provenance") {
-      const temporaryTag = `${tag}--source`;
       execFileSync(
         "docker",
         [
           "buildx",
           "build",
           "--platform",
-          "linux/amd64",
+          `linux/${architecture}`,
           "--provenance=true",
           "--push",
           "--tag",
-          `${imageRefValue}:${temporaryTag}`,
+          `${imageRefValue}:${tag}`,
           contextDirectory
         ],
         { stdio: "inherit" }
       );
 
-      const sourceDigest = inspectDigest(`${imageRefValue}:${temporaryTag}`);
-      const platformDigest = _resolvePlatformDigest(`${imageRefValue}@${sourceDigest}`, "linux", "amd64");
-      execFileSync(
-        "docker",
-        [
-          "buildx",
-          "imagetools",
-          "create",
-          "--prefer-index=false",
-          "--tag",
-          `${imageRefValue}:${tag}`,
-          `${imageRefValue}@${platformDigest}`
-        ],
-        { stdio: "inherit" }
-      );
+      const taggedDigest = inspectDigest(`${imageRefValue}:${tag}`);
+      return {
+        tag,
+        taggedDigest,
+        leafDigest: _resolvePlatformDigest(`${imageRefValue}@${taggedDigest}`, "linux", architecture)
+      };
     } else {
       execFileSync(
         "docker",
@@ -170,7 +181,7 @@ function _buildImage(imageRefValue, tag, payload, mode) {
           "buildx",
           "build",
           "--platform",
-          "linux/amd64",
+          `linux/${architecture}`,
           "--provenance=false",
           "--push",
           "--tag",
@@ -184,7 +195,12 @@ function _buildImage(imageRefValue, tag, payload, mode) {
     rmSync(contextDirectory, { recursive: true, force: true });
   }
 
-  return inspectDigest(`${imageRefValue}:${tag}`);
+  const digest = inspectDigest(`${imageRefValue}:${tag}`);
+  return {
+    tag,
+    taggedDigest: digest,
+    leafDigest: digest
+  };
 }
 
 function _resolveOwner(imageRefValue) {
@@ -199,6 +215,21 @@ function _resolvePackageName(imageRefValue) {
 
 function _cosignSign(reference) {
   execFileSync("cosign", ["sign", "--yes", reference], { stdio: "inherit" });
+}
+
+function _publishMultiArchIndex(imageRefValue, tag, sourceDigests) {
+  execFileSync(
+    "docker",
+    [
+      "buildx",
+      "imagetools",
+      "create",
+      "--tag",
+      `${imageRefValue}:${tag}`,
+      ...sourceDigests.map((digest) => `${imageRefValue}@${digest}`)
+    ],
+    { stdio: "inherit" }
+  );
 }
 
 function _resolvePlatformDigest(reference, os, architecture) {
