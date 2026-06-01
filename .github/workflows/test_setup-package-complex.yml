@@ -21,14 +21,17 @@ permissions:
   id-token: write
 
 env:
-  TEST_OWNER: ${{ vars.GH_TEST_ORG }}
+  PACKAGE: ${{ github.event.repository.name }}-test--complex
   IMAGE_REF: ghcr.io/${{ vars.GH_TEST_ORG }}/${{ github.event.repository.name }}-test--complex
 
 jobs:
-  verify-environment:
+  prepare-environment:
     name: Verify environment
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
       - name: Require test org configuration
         shell: bash
         env:
@@ -41,10 +44,19 @@ jobs:
           [[ -n "$GH_TEST_PAT_USERNAME" ]] || { echo "Missing repo variable GH_TEST_PAT_USERNAME" >&2; exit 1; }
           [[ -n "$GH_TEST_PAT" ]] || { echo "Missing repo secret GH_TEST_PAT" >&2; exit 1; }
 
+      - name: Clear scenario package
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TEST_PAT }}
+          OWNER: ${{ vars.GH_TEST_ORG }}
+        run: |
+          set -euo pipefail
+          node tools/tests/delete-ghcr-package.mjs "$OWNER" "$PACKAGE" "$GITHUB_TOKEN"
+
   build_alpha_amd64:
     name: Build image (alpha-amd64)
     runs-on: ubuntu-latest
-    needs: verify-environment
+    needs: prepare-environment
     outputs:
       digest: ${{ steps.build.outputs.digest }}
     steps:
@@ -64,7 +76,7 @@ jobs:
   build_alpha_arm64:
     name: Build image (alpha-arm64)
     runs-on: ubuntu-24.04-arm
-    needs: verify-environment
+    needs: prepare-environment
     outputs:
       digest: ${{ steps.build.outputs.digest }}
     steps:
@@ -84,7 +96,7 @@ jobs:
   publish_alpha:
     name: Publish alpha multi-arch image
     needs:
-      - verify-environment
+      - prepare-environment
       - build_alpha_amd64
       - build_alpha_arm64
     runs-on: ubuntu-latest
@@ -117,7 +129,7 @@ jobs:
   build_beta_amd64:
     name: Build image (beta-amd64)
     needs:
-      - verify-environment
+      - prepare-environment
       - publish_alpha
     runs-on: ubuntu-latest
     outputs:
@@ -142,7 +154,7 @@ jobs:
   publish_beta:
     name: Publish beta multi-arch image
     needs:
-      - verify-environment
+      - prepare-environment
       - build_alpha_arm64
       - publish_alpha
       - build_beta_amd64
@@ -176,7 +188,7 @@ jobs:
   publish_gamma:
     name: Publish gamma multi-arch image
     needs:
-      - verify-environment
+      - prepare-environment
       - build_alpha_arm64
       - build_beta_amd64
       - publish_beta

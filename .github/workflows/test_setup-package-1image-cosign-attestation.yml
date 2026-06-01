@@ -1,0 +1,79 @@
+# Builds:
+# - single-arm64: image (tagged, with provenance and cosign signature)
+
+name: "Test: Setup Package Single Cosign Attestation"
+
+"on":
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+env:
+  PACKAGE: ${{ github.event.repository.name }}-test--1image-cosign-attestation
+  IMAGE_REF: ghcr.io/${{ vars.GH_TEST_ORG }}/${{ github.event.repository.name }}-test--1image-cosign-attestation
+
+jobs:
+  prepare-environment:
+    name: Verify environment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Require test org configuration
+        shell: bash
+        env:
+          GH_TEST_ORG: ${{ vars.GH_TEST_ORG }}
+          GH_TEST_PAT_USERNAME: ${{ vars.GH_TEST_PAT_USERNAME }}
+          GH_TEST_PAT: ${{ secrets.GH_TEST_PAT }}
+        run: |
+          set -euo pipefail
+          [[ -n "$GH_TEST_ORG" ]] || { echo "Missing repo variable GH_TEST_ORG" >&2; exit 1; }
+          [[ -n "$GH_TEST_PAT_USERNAME" ]] || { echo "Missing repo variable GH_TEST_PAT_USERNAME" >&2; exit 1; }
+          [[ -n "$GH_TEST_PAT" ]] || { echo "Missing repo secret GH_TEST_PAT" >&2; exit 1; }
+
+      - name: Clear scenario package
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TEST_PAT }}
+          OWNER: ${{ vars.GH_TEST_ORG }}
+        run: |
+          set -euo pipefail
+          node tools/tests/delete-ghcr-package.mjs "$OWNER" "$PACKAGE" "$GITHUB_TOKEN"
+
+  build_arm64:
+    name: Build image (arm64)
+    runs-on: ubuntu-24.04-arm
+    needs: prepare-environment
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Build and test image
+        id: build
+        uses: ./.github/actions/test-registry-build-image
+        with:
+          image_ref: ${{ env.IMAGE_REF }}
+          arch: arm64
+          platform: linux/arm64
+          registry_username: ${{ vars.GH_TEST_PAT_USERNAME }}
+          registry_password: ${{ secrets.GH_TEST_PAT }}
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Sign arm64 image only
+        shell: bash
+        run: |
+          set -euo pipefail
+          cosign sign --yes "${{ env.IMAGE_REF }}@${{ steps.build.outputs.digest }}"
+
+      - name: Print result
+        run: |
+          echo "Created package ${{ env.IMAGE_REF }}"
