@@ -85,6 +85,9 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
       in either direction through manifests not retained by surviving real tags
     - retained boundary is defined as surviving non-sha tagged manifests plus their descendants via
       `manifest_reachability`
+    - planner output must filter `fullyDeletableRoots` from final root decisions, not forward the raw artifact list:
+      execution deletes from `plan.fullyDeletableRoots`, so any root reclassified to `untag-only` must be removed there
+      as well or live cleanup will still delete it after detaching tags
 - Scenario maintenance note:
   - test-scenario definitions are now split into cleanup and graph modules under `tools/tests/test-scenarios/`
   - the GHCR test-scenario seed action is now a dispatcher that calls small repo-local seed scripts plus a dedicated

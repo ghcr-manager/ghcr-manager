@@ -24,6 +24,11 @@ export function buildPlanOutputs(
   | "collateralTags"
 > {
   const rootDecisions = buildRootDecisions(directTargetRoots, planArtifacts);
+  const fullyDeletableDigests = new Set(
+    rootDecisions
+      .filter((decision) => decision.validationStatus === DeletePlanValidationStatuses.fullyDeletable)
+      .map((decision) => decision.digest)
+  );
   const blockedDigests = new Set(
     rootDecisions
       .filter((decision) => decision.validationStatus === DeletePlanValidationStatuses.blocked)
@@ -41,7 +46,7 @@ export function buildPlanOutputs(
     protectedRoots,
     closureManifests: planArtifacts.closureManifests,
     blockedRoots,
-    fullyDeletableRoots: planArtifacts.fullyDeletableRoots,
+    fullyDeletableRoots: planArtifacts.fullyDeletableRoots.filter((root) => fullyDeletableDigests.has(root.digest)),
     collateralTags: []
   };
 }
