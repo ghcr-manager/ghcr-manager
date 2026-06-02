@@ -406,3 +406,7 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
 - Blocked shared closure seed note:
   - `blocked-shared-closure` now also seeds a standalone `keep-dummy` image tag
   - that prevents the executor-matrix live cleanup from trying to remove the last remaining package tag
+- Local stress-test note:
+  - `docs/ai/tasks/07/run-aicage-delete-test-tags-dry-run.sh` runs the local CLI against
+    `artifacts/aicage__aicage.sqlite`
+  - it performs a dry-run cleanup for tags matching the regex `^.*-test$`
