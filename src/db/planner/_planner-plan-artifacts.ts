@@ -14,7 +14,8 @@ export class PlannerPlanArtifacts {
       return {
         closureManifests: [],
         blockedRoots: [],
-        fullyDeletableRoots: []
+        fullyDeletableRoots: [],
+        supportedUntagOnlyRootDigests: new Set()
       };
     }
 
@@ -23,13 +24,104 @@ export class PlannerPlanArtifacts {
       const blockedRoots = this.#listBlockedRoots(scanId);
       const blockedVersionIds = new Set(blockedRoots.map((root) => root.blockedVersionId));
       const fullyDeletableRoots = deleteRootCandidates.filter((root) => !blockedVersionIds.has(root.versionId));
+      const supportedUntagOnlyRootDigests = this.#listSupportedUntagOnlyRootDigests(scanId);
 
       return {
         closureManifests,
         blockedRoots,
-        fullyDeletableRoots
+        fullyDeletableRoots,
+        supportedUntagOnlyRootDigests
       };
     });
+  }
+
+  #listSupportedUntagOnlyRootDigests(scanId: number) {
+    const sql = `
+      WITH retained_tagged_manifests AS (
+        SELECT DISTINCT
+          m.digest
+        FROM manifests m
+        JOIN tags t
+          ON t.scan_id = m.scan_id
+         AND t.version_id = m.version_id
+         AND t.is_digest_tag = 0
+        WHERE m.scan_id = ?
+          AND NOT EXISTS (
+            SELECT 1
+            FROM temp_direct_target_roots dtr
+            WHERE dtr.root_digest = m.digest
+          )
+      ),
+      retained_manifests AS (
+        SELECT
+          retained.digest
+        FROM retained_tagged_manifests retained
+
+        UNION
+
+        SELECT
+          mr.descendant_digest AS digest
+        FROM retained_tagged_manifests retained
+        JOIN manifest_reachability mr
+          ON mr.scan_id = ?
+         AND mr.ancestor_digest = retained.digest
+         AND mr.min_distance > 0
+      )
+      SELECT DISTINCT
+        dtr.root_digest
+      FROM temp_direct_target_roots dtr
+      WHERE dtr.root_manifest_kind = 'index_manifest'
+        AND EXISTS (
+          SELECT 1
+          FROM manifest_edges me
+          JOIN manifests child
+            ON child.scan_id = ?
+           AND child.digest = me.child_digest
+          WHERE me.scan_id = ?
+            AND me.parent_digest = dtr.root_digest
+            AND me.edge_kind = 'referrer'
+            AND child.manifest_kind = 'signature_manifest'
+        )
+        AND EXISTS (
+          SELECT 1
+          FROM manifest_edges me
+          JOIN manifests child
+            ON child.scan_id = ?
+           AND child.digest = me.child_digest
+          WHERE me.scan_id = ?
+            AND me.parent_digest = dtr.root_digest
+            AND me.edge_kind = 'image-child'
+            AND child.manifest_kind <> 'signature_manifest'
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM manifest_edges me
+          JOIN manifests child
+            ON child.scan_id = ?
+           AND child.digest = me.child_digest
+          WHERE me.scan_id = ?
+            AND me.parent_digest = dtr.root_digest
+            AND me.edge_kind = 'image-child'
+            AND child.manifest_kind <> 'signature_manifest'
+            AND child.digest NOT IN (
+              SELECT digest
+              FROM retained_manifests
+            )
+        )
+    `;
+
+    const rows = this.#sql.all<{ root_digest: string }>(sql, [
+      scanId,
+      scanId,
+      scanId,
+      scanId,
+      scanId,
+      scanId,
+      scanId,
+      scanId
+    ]);
+
+    return new Set(rows.map((row) => row.root_digest));
   }
 
   #listClosureManifests(scanId: number) {

@@ -56,6 +56,7 @@ export function buildRootDecisions(
   planArtifacts: PlanArtifacts
 ): DeletePlanRootDecision[] {
   const fullyDeletableDigests = new Set(planArtifacts.fullyDeletableRoots.map((root) => root.digest));
+  const supportedUntagOnlyRootDigests = planArtifacts.supportedUntagOnlyRootDigests;
   const blockedRootByDigest = new Map<string, DeletePlanBlockedRoot>();
   for (const blockedRoot of planArtifacts.blockedRoots) {
     if (!blockedRootByDigest.has(blockedRoot.blockedDigest)) {
@@ -66,7 +67,7 @@ export function buildRootDecisions(
   return directTargetRoots.map((root) => {
     const blockedRoot = blockedRootByDigest.get(root.digest);
 
-    if (_isUntagOnly(root, blockedRoot)) {
+    if (_isUntagOnly(root, blockedRoot, supportedUntagOnlyRootDigests)) {
       return {
         versionId: root.versionId,
         digest: root.digest,
@@ -146,14 +147,18 @@ export function buildBlockedValidationReason(blockedRoot?: DeletePlanBlockedRoot
   return `blocked because retained root ${blockedRoot.blockingDigest} still requires shared manifest ${blockedRoot.overlapDigest}`;
 }
 
-function _isUntagOnly(root: DeletePlanRoot, blockedRoot?: DeletePlanBlockedRoot): boolean {
+function _isUntagOnly(
+  root: DeletePlanRoot,
+  blockedRoot: DeletePlanBlockedRoot | undefined,
+  supportedUntagOnlyRootDigests: ReadonlySet<string>
+): boolean {
   if (root.selectionMode === "untag-only") {
     return true;
   }
 
   return (
     root.reason === "delete-tags-all-tags-selected" &&
-    blockedRoot !== undefined &&
-    blockedRoot.overlapDigest === root.digest
+    ((blockedRoot !== undefined && blockedRoot.overlapDigest === root.digest) ||
+      supportedUntagOnlyRootDigests.has(root.digest))
   );
 }

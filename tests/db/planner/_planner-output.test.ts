@@ -3,7 +3,7 @@ import test from "node:test";
 import { ManifestKinds } from "../../../src/core/index.js";
 import { buildPlanOutputs } from "../../../src/db/planner/_planner-output.js";
 import { DeletePlanValidationStatuses, PlannerRepository, ScanWriter, openDatabase } from "../../../src/db/index.js";
-import type { DeletePlanRoot, PlanArtifacts } from "../../../src/db/planner/index.js";
+import type { DeletePlanRoot } from "../../../src/db/planner/index.js";
 
 test("planner repository builds output decisions and protected roots", () => {
   const database = openDatabase(":memory:");
@@ -107,7 +107,7 @@ test("buildPlanOutputs removes untag-only roots from fully deletable execution t
       selectionMode: "delete-root"
     }
   ];
-  const planArtifacts: PlanArtifacts = {
+  const planArtifacts: Parameters<typeof buildPlanOutputs>[2] = {
     closureManifests: [],
     blockedRoots: [
       {
@@ -120,7 +120,8 @@ test("buildPlanOutputs removes untag-only roots from fully deletable execution t
         reason: "overlap-with-retained-root"
       }
     ],
-    fullyDeletableRoots: [directTargetRoots[0]!]
+    fullyDeletableRoots: [directTargetRoots[0]!],
+    supportedUntagOnlyRootDigests: new Set()
   };
 
   const planOutputs = buildPlanOutputs(["image-a"], directTargetRoots, planArtifacts);

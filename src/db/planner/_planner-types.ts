@@ -132,6 +132,7 @@ export interface PlanArtifacts {
   closureManifests: DeletePlanClosureManifest[];
   blockedRoots: DeletePlanBlockedRoot[];
   fullyDeletableRoots: DeletePlanRoot[];
+  supportedUntagOnlyRootDigests: Set<string>;
 }
 
 export interface DeletePlan {

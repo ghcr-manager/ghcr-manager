@@ -134,7 +134,8 @@ test("planner plan artifacts ignore non-delete direct targets when building clos
   assert.deepEqual(artifacts, {
     closureManifests: [],
     blockedRoots: [],
-    fullyDeletableRoots: []
+    fullyDeletableRoots: [],
+    supportedUntagOnlyRootDigests: new Set()
   });
 });
 
@@ -185,6 +186,7 @@ test("planner plan artifacts expand multi-arch child manifests and referrers int
 
   assert.deepEqual(artifacts.blockedRoots, []);
   assert.deepEqual(artifacts.fullyDeletableRoots, directTargetRoots);
+  assert.deepEqual(artifacts.supportedUntagOnlyRootDigests, new Set());
   assert.deepEqual(artifacts.closureManifests, [
     {
       sourceVersionId: 1,
@@ -266,6 +268,7 @@ test("planner plan artifacts do not treat sibling wrapper indexes as overlapping
 
   assert.deepEqual(artifacts.blockedRoots, []);
   assert.deepEqual(artifacts.fullyDeletableRoots, directTargetRoots);
+  assert.deepEqual(artifacts.supportedUntagOnlyRootDigests, new Set());
   assert.deepEqual(artifacts.closureManifests, [
     {
       sourceVersionId: 2,
@@ -329,6 +332,7 @@ test("planner plan artifacts block deleting a selected manifest that retained ta
     }
   ]);
   assert.deepEqual(artifacts.fullyDeletableRoots, []);
+  assert.deepEqual(artifacts.supportedUntagOnlyRootDigests, new Set());
 });
 
 test("planner plan artifacts include reverse-linked untagged manifests connected to a selected closure", (t) => {
@@ -383,6 +387,7 @@ test("planner plan artifacts include reverse-linked untagged manifests connected
 
   assert.deepEqual(artifacts.blockedRoots, []);
   assert.deepEqual(artifacts.fullyDeletableRoots, directTargetRoots);
+  assert.deepEqual(artifacts.supportedUntagOnlyRootDigests, new Set());
   assert.deepEqual(
     artifacts.closureManifests.map((manifest) => [manifest.memberDigest, manifest.memberRole]),
     [
@@ -391,4 +396,88 @@ test("planner plan artifacts include reverse-linked untagged manifests connected
       [digestIndexDigest, "connected"]
     ]
   );
+});
+
+test("planner plan artifacts support untag-only for cosign indexes whose direct payload children are retained", (t) => {
+  const harness = _createHarness("cosign-retained-index");
+  t.after(() => harness.database.close());
+
+  const retainedIndexDigest = "sha256:retained-index";
+  const selectedIndexDigest = "sha256:selected-index";
+  const imageDigest = "sha256:image";
+  const attestationDigest = "sha256:attestation";
+  const signatureDigest = "sha256:signature";
+  const digestIndexDigest = "sha256:digest-index";
+
+  _insertManifestVersion(harness.writer, 1, retainedIndexDigest, "2026-05-01T10:00:00.000Z", {
+    tag: "multiarch"
+  });
+  _insertManifestVersion(harness.writer, 2, selectedIndexDigest, "2026-05-01T10:01:00.000Z", {
+    manifestKind: ManifestKinds.indexManifest,
+    tag: "image-a"
+  });
+  _insertManifestVersion(harness.writer, 3, imageDigest, "2026-05-01T10:02:00.000Z", {
+    manifestKind: ManifestKinds.imageManifest,
+    mediaType: "application/vnd.oci.image.manifest.v1+json"
+  });
+  _insertManifestVersion(harness.writer, 4, attestationDigest, "2026-05-01T10:03:00.000Z", {
+    manifestKind: ManifestKinds.attestationManifest,
+    mediaType: "application/vnd.oci.image.manifest.v1+json"
+  });
+  _insertManifestVersion(harness.writer, 5, signatureDigest, "2026-05-01T10:04:00.000Z", {
+    manifestKind: ManifestKinds.signatureManifest,
+    mediaType: "application/vnd.oci.image.manifest.v1+json"
+  });
+  _insertManifestVersion(harness.writer, 6, digestIndexDigest, "2026-05-01T10:05:00.000Z", {
+    manifestKind: ManifestKinds.indexManifest,
+    tag: "sha256-selected-index"
+  });
+  harness.writer.insertManifestEdge({
+    parentDigest: retainedIndexDigest,
+    childDigest: imageDigest,
+    edgeKind: "image-child"
+  });
+  harness.writer.insertManifestEdge({
+    parentDigest: retainedIndexDigest,
+    childDigest: attestationDigest,
+    edgeKind: "image-child"
+  });
+  harness.writer.insertManifestEdge({
+    parentDigest: selectedIndexDigest,
+    childDigest: imageDigest,
+    edgeKind: "image-child"
+  });
+  harness.writer.insertManifestEdge({
+    parentDigest: selectedIndexDigest,
+    childDigest: attestationDigest,
+    edgeKind: "image-child"
+  });
+  harness.writer.insertManifestEdge({
+    parentDigest: selectedIndexDigest,
+    childDigest: signatureDigest,
+    edgeKind: "referrer"
+  });
+  harness.writer.insertManifestEdge({
+    parentDigest: digestIndexDigest,
+    childDigest: selectedIndexDigest,
+    edgeKind: "digest-tag-referrer"
+  });
+  harness.writer.insertManifestEdge({
+    parentDigest: digestIndexDigest,
+    childDigest: signatureDigest,
+    edgeKind: "image-child"
+  });
+  harness.writer.rebuildManifestReachability();
+
+  const artifacts = harness.artifacts.build(harness.scanId, [
+    {
+      versionId: 2,
+      digest: selectedIndexDigest,
+      manifestKind: ManifestKinds.indexManifest,
+      reason: "delete-tags-all-tags-selected",
+      selectionMode: "delete-root"
+    }
+  ]);
+
+  assert.deepEqual(artifacts.supportedUntagOnlyRootDigests, new Set([selectedIndexDigest]));
 });
