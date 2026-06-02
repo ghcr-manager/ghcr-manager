@@ -213,6 +213,11 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
   - `cleanup_root_decisions`
   - `cleanup_protected_root_blocks`
   - derived SQL views for closure/blocking reads
+  - test-only `v_cleanup_root_closure_members` was removed; mirrored tests now assert closure membership directly from
+    `cleanup_root_decisions` plus `manifest_reachability`
+  - test-only `v_cleanup_blocking_overlaps` and `v_cleanup_root_decision_readable` were also removed; the writer test
+    now reads the same facts directly from `cleanup_protected_root_blocks`, `cleanup_root_decisions`, and
+    `cleanup_selected_tags`
 - Shared domain string categories now go through exported constant objects in production code and mirrored TS tests:
   - `ManifestKinds`
   - `DeletePlanValidationStatuses`

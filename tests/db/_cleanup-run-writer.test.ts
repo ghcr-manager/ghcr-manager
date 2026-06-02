@@ -246,13 +246,34 @@ test("cleanup run writer stores planner decisions and protected roots", () => {
   const closureMembers = database
     .prepare(
       `
-        SELECT root_digest, member_digest, hops_from_root, member_role, validation_reason_code
-        FROM v_cleanup_root_closure_members
-        WHERE cleanup_run_id = ?
+        SELECT
+          decision.digest AS root_digest,
+          decision.digest AS member_digest,
+          0 AS hops_from_root,
+          'root' AS member_role,
+          decision.validation_reason_code
+        FROM cleanup_root_decisions decision
+        WHERE decision.cleanup_run_id = ?
+
+        UNION ALL
+
+        SELECT
+          decision.digest AS root_digest,
+          reachability.descendant_digest AS member_digest,
+          reachability.min_distance AS hops_from_root,
+          'descendant' AS member_role,
+          decision.validation_reason_code
+        FROM cleanup_root_decisions decision
+        JOIN manifest_reachability reachability
+          ON reachability.scan_id = decision.scan_id
+         AND reachability.ancestor_digest = decision.digest
+         AND reachability.min_distance > 0
+        WHERE decision.cleanup_run_id = ?
+
         ORDER BY hops_from_root, member_digest
       `
     )
-    .all(cleanupRunId) as Array<{
+    .all(cleanupRunId, cleanupRunId) as Array<{
     root_digest: string;
     member_digest: string;
     hops_from_root: number;
@@ -280,13 +301,17 @@ test("cleanup run writer stores planner decisions and protected roots", () => {
     .prepare(
       `
         SELECT
-          protected_digest,
-          blocked_digest,
-          blocked_validation_reason_code,
-          block_reason_code,
-          overlap_digest
-        FROM v_cleanup_blocking_overlaps
-        WHERE cleanup_run_id = ?
+          block.protected_digest,
+          block.blocked_digest,
+          decision.validation_reason_code AS blocked_validation_reason_code,
+          block.block_reason_code,
+          block.overlap_digest
+        FROM cleanup_protected_root_blocks block
+        JOIN cleanup_root_decisions decision
+          ON decision.cleanup_run_id = block.cleanup_run_id
+         AND decision.scan_id = block.scan_id
+         AND decision.digest = block.blocked_digest
+        WHERE block.cleanup_run_id = ?
       `
     )
     .all(cleanupRunId) as Array<{
@@ -310,15 +335,49 @@ test("cleanup run writer stores planner decisions and protected roots", () => {
     .prepare(
       `
         SELECT
-          root_digest,
-          selection_mode_label,
-          selection_reason_label,
-          validation_status_label,
-          validation_reason_code_label,
-          selected_tag_count,
-          selected_tags
-        FROM v_cleanup_root_decision_readable
-        WHERE cleanup_run_id = ?
+          decision.digest AS root_digest,
+          CASE decision.selection_mode
+            WHEN 'delete-root' THEN 'delete root'
+            WHEN 'untag-only' THEN 'detach selected tags only'
+          END AS selection_mode_label,
+          CASE decision.selection_reason
+            WHEN 'delete-tags-all-tags-selected' THEN 'all tags on this root were selected'
+            WHEN 'delete-tags-partial-tag-match' THEN 'only part of this root''s tag set was selected'
+            WHEN 'delete-untagged' THEN 'root was selected because it is untagged'
+            WHEN 'keep-n-tagged-overflow' THEN 'root fell outside the tagged keep window'
+            WHEN 'keep-n-untagged-overflow' THEN 'root fell outside the untagged keep window'
+          END AS selection_reason_label,
+          CASE decision.validation_status
+            WHEN 'fully-deletable' THEN 'root and closure can be deleted'
+            WHEN 'untag-only' THEN 'only selected tags can be detached'
+            WHEN 'blocked' THEN 'root deletion is blocked'
+          END AS validation_status_label,
+          CASE decision.validation_reason_code
+            WHEN 'fully-deletable-no-retained-overlap' THEN 'no retained root overlaps this closure'
+            WHEN 'untag-only-partial-tag-match' THEN 'matched tags cover only part of the root tag set'
+            WHEN 'untag-only-retained-manifest' THEN 'selected tags can be detached but the manifest is still needed'
+            WHEN 'blocked-overlap-with-retained-root' THEN 'a retained root still requires an overlapping manifest'
+          END AS validation_reason_code_label,
+          COUNT(selected.tag) AS selected_tag_count,
+          GROUP_CONCAT(selected.tag, ', ') AS selected_tags
+        FROM cleanup_root_decisions decision
+        JOIN manifests root_manifest
+          ON root_manifest.scan_id = decision.scan_id
+         AND root_manifest.digest = decision.digest
+        LEFT JOIN cleanup_selected_tags selected
+          ON selected.cleanup_run_id = decision.cleanup_run_id
+         AND selected.scan_id = decision.scan_id
+        LEFT JOIN tags tag
+          ON tag.scan_id = selected.scan_id
+         AND tag.tag = selected.tag
+         AND tag.version_id = root_manifest.version_id
+        WHERE decision.cleanup_run_id = ?
+        GROUP BY
+          decision.digest,
+          decision.selection_mode,
+          decision.selection_reason,
+          decision.validation_status,
+          decision.validation_reason_code
       `
     )
     .all(cleanupRunId) as Array<{
