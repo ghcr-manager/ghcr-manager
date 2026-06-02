@@ -134,6 +134,9 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
     - tagged-only query path in `_planner-direct-target-roots-tagged.ts`
     - combined tagged/untagged path in `_planner-direct-target-roots-combined.ts`
     - shared options type in `_planner-direct-target-root-options.ts`
+    - combined-path internals are further split so the main combined file now only wires together:
+      - tag-filter SQL snippets from `_planner-direct-target-root-tag-filters.ts`
+      - the combined tagged/untagged SQL blob from `_planner-direct-target-roots-combined-sql.ts`
 - Coverage note:
   - CLI dispatch, cleanup-summary Markdown branches, and planner repository wrapper methods now have explicit tests so
     post-refactor line coverage reflects the live surface more closely
