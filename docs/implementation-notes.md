@@ -129,6 +129,11 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
   - `keep-n-untagged` remains incompatible with `delete-untagged`
   - the older planner helper layer for separate tagged/untagged root-target selection was removed after the SQL
     composition refactor so `src/db/planner` reflects the live repository path instead of carrying dead adapters
+  - the direct-target root planner is now split into small internal files:
+    - dispatcher in `_planner-direct-target-roots.ts`
+    - tagged-only query path in `_planner-direct-target-roots-tagged.ts`
+    - combined tagged/untagged path in `_planner-direct-target-roots-combined.ts`
+    - shared options type in `_planner-direct-target-root-options.ts`
 - Coverage note:
   - CLI dispatch, cleanup-summary Markdown branches, and planner repository wrapper methods now have explicit tests so
     post-refactor line coverage reflects the live surface more closely
@@ -410,3 +415,7 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
   - `docs/ai/tasks/07/run-aicage-delete-test-tags-dry-run.sh` runs the local CLI against
     `artifacts/aicage__aicage.sqlite`
   - it performs a dry-run cleanup for tags matching the regex `^.*-test$`
+- Planner performance note:
+  - pure tagged-selector root planning now bypasses `v_scan_root_manifests` and uses a tagged-only query path
+  - that avoids paying `has_ancestor` / untagged-root overhead for large delete-tag-only dry-runs
+  - schema also adds `idx_manifest_edges_scan_child_kind` to cheapen remaining `has_ancestor` lookups

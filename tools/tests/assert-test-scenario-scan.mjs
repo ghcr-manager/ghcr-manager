@@ -100,7 +100,17 @@ for (const scanAssertion of scanAssertions) {
           t.tag,
           m.manifest_kind,
           mp.raw_json,
-          roots.has_ancestor
+          CASE
+            WHEN EXISTS (
+              SELECT 1
+              FROM manifest_edges me
+              WHERE me.scan_id = m.scan_id
+                AND me.child_digest = m.digest
+                AND me.edge_kind != 'digest-tag-referrer'
+            )
+              THEN 1
+            ELSE 0
+          END AS has_ancestor
         FROM tags t
         JOIN manifests m
           ON m.scan_id = t.scan_id
@@ -108,9 +118,6 @@ for (const scanAssertion of scanAssertions) {
         JOIN manifest_payloads mp
           ON mp.scan_id = m.scan_id
          AND mp.digest = m.digest
-        JOIN v_scan_root_manifests roots
-          ON roots.scan_id = m.scan_id
-         AND roots.root_version_id = m.version_id
         WHERE t.scan_id = ?
           AND t.tag = ?
       `
@@ -148,12 +155,12 @@ for (const signatureAssertion of signatureSubjectAssertions) {
   const keepRoot = database
     .prepare(
       `
-        SELECT roots.root_digest
-        FROM v_scan_root_manifests roots
-        JOIN tags t
-          ON t.scan_id = roots.scan_id
-         AND t.version_id = roots.root_version_id
-        WHERE roots.scan_id = ?
+        SELECT m.digest AS root_digest
+        FROM tags t
+        JOIN manifests m
+          ON m.scan_id = t.scan_id
+         AND m.version_id = t.version_id
+        WHERE t.scan_id = ?
           AND t.tag = ?
       `
     )
@@ -173,9 +180,6 @@ for (const signatureAssertion of signatureSubjectAssertions) {
         JOIN manifests subjects
           ON subjects.scan_id = sig.scan_id
          AND subjects.digest = sig.subject_digest
-        JOIN v_scan_root_manifests sig_roots
-          ON sig_roots.scan_id = sig.scan_id
-         AND sig_roots.root_digest = sig.digest
         JOIN manifest_reachability mr
           ON mr.scan_id = sig.scan_id
          AND mr.ancestor_digest = ?
@@ -184,7 +188,17 @@ for (const signatureAssertion of signatureSubjectAssertions) {
           AND sig.artifact_type = ?
           AND sig.subject_digest IS NOT NULL
           AND subjects.manifest_kind = ?
-          ${signatureAssertion.requireUntaggedRoots ? "AND sig_roots.tag_count = 0" : ""}
+          ${
+            signatureAssertion.requireUntaggedRoots
+              ? `AND NOT EXISTS (
+                   SELECT 1
+                   FROM tags sig_tags
+                   WHERE sig_tags.scan_id = sig.scan_id
+                     AND sig_tags.version_id = sig.version_id
+                     AND sig_tags.is_digest_tag = 0
+                 )`
+              : ""
+          }
       `
     )
     .all(

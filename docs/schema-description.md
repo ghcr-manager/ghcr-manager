@@ -267,23 +267,6 @@ One latest completed scan per `owner/package`.
 
 Use this when you want "current latest picture" style queries instead of manually picking a `scan_id`.
 
-### `v_scan_root_manifests`
-
-One root manifest per package version, enriched with query-friendly flags.
-
-Important columns include:
-
-- `root_version_id`
-- `root_digest`
-- `root_manifest_kind`
-- `created_at`
-- `updated_at`
-- `tag_count`
-- `is_tagged`
-- `has_ancestor`
-
-This is the main convenience view for "what are the roots in this scan?"
-
 ### `v_digest_tag_relations`
 
 Heuristic helper view for digest-shaped tags such as `sha256-<digest>.sig`.
