@@ -122,6 +122,10 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
 - Tagged cleanup seed note:
   - digest and wildcard tagged-delete scenarios now use dedicated seed strategy IDs instead of borrowing
     `tagged-fully-deletable`
+- Orphaned digest-tag selector note:
+  - `v_digest_tag_relations` was removed as a live dependency
+  - orphaned digest-tag resolution now uses one local query in `_tag-selector-resolver.ts`
+  - that query trusts `tags.is_digest_tag = 1` from scan ingest instead of reclassifying digest tags inside a view
 - Cleanup selector composition note:
   - cleanup direct-target root selection now goes through one SQL-backed planner path
   - selector predicates are composed in SQL, then tagged/untagged keep-overflow ranking is applied in later SQL stages

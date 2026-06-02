@@ -267,20 +267,6 @@ One latest completed scan per `owner/package`.
 
 Use this when you want "current latest picture" style queries instead of manually picking a `scan_id`.
 
-### `v_digest_tag_relations`
-
-Heuristic helper view for digest-shaped tags such as `sha256-<digest>.sig`.
-
-It extracts a parent digest from the tag name and compares that with:
-
-- whether that digest exists in `manifests`
-- whether the artifact's `subject_digest` matches that parent
-
-This is exploratory/helper data, not authoritative graph structure.
-
-In practice, use it to inspect suspicious digest-shaped tags or orphan-style companion artifacts, not to replace
-`manifest_edges` or `manifest_reachability`.
-
 ### `v_cleanup_root_closure_members`
 
 Derived closure members for persisted cleanup runs.
