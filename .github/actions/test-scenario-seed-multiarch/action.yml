@@ -98,7 +98,7 @@ runs:
       with:
         image_ref: ${{ inputs.image_ref }}
         tags: |
-          blocked-shared-closure--delete-me
+          delete-me
         platform_digests: |
           linux/amd64=${{ steps.blocked-delete-amd64.outputs.digest }}
           linux/arm64=${{ steps.blocked-shared-arm64.outputs.digest }}
@@ -112,7 +112,7 @@ runs:
       with:
         image_ref: ${{ inputs.image_ref }}
         tags: |
-          blocked-shared-closure--keep-me
+          keep-me
         platform_digests: |
           linux/amd64=${{ steps.blocked-keep-amd64.outputs.digest }}
           linux/arm64=${{ steps.blocked-shared-arm64.outputs.digest }}
@@ -191,7 +191,7 @@ runs:
         source_arm64_ref="$IMAGE_REF:${GITHUB_RUN_ID}-${SCENARIO_ID}-arm64-test"
 
         for target_tag in delete-me keep-me; do
-          target_ref="$IMAGE_REF:${SCENARIO_ID}--${target_tag}"
+          target_ref="$IMAGE_REF:${target_tag}"
           docker manifest create "$target_ref" "$source_amd64_ref" "$source_arm64_ref"
           docker manifest push "$target_ref"
         done
@@ -267,7 +267,7 @@ runs:
       with:
         image_ref: ${{ inputs.image_ref }}
         tags: |
-          ${{ inputs.seed_strategy }}--keep-me
+          keep-me
         platform_digests: |
           linux/amd64=${{ steps.cosign-referrer-amd64.outputs.digest }}
           linux/arm64=${{ steps.cosign-referrer-arm64.outputs.digest }}

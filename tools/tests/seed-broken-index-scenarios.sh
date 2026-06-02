@@ -43,7 +43,7 @@ docker buildx build \
   --platform linux/amd64 \
   --provenance=false \
   --push \
-  --tag "$image_ref:${scenario_id}--keep" \
+  --tag "$image_ref:keep" \
   "$keep_dir"
 
 primary_child_digest=""
@@ -141,4 +141,4 @@ curl -fsSL \
   -H "Authorization: Bearer $token" \
   -H "Content-Type: application/vnd.oci.image.index.v1+json" \
   --data-binary "@$index_json_path" \
-  "https://ghcr.io/v2/${owner}/${package}/manifests/${scenario_id}--ghost"
+  "https://ghcr.io/v2/${owner}/${package}/manifests/ghost"

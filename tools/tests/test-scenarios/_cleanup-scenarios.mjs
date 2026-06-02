@@ -341,9 +341,9 @@ export const cleanupScenarios = {
     packageSuffix: "scenario--regex-untag-only-single-shared-root",
     seedStrategy: "untag-only-single-shared-root",
     supportedExecutors: ["ghcr-manager", "ghcr-cleanup-action"],
-    ghcrManagerArgs: ["--delete-tag", "^untag-only-single-shared-root--delete-me$", "--use-regex"],
+    ghcrManagerArgs: ["--delete-tag", "^delete-me$", "--use-regex"],
     dataaxiomInputs: {
-      "delete-tags": "^untag-only-single-shared-root--delete-me$",
+      "delete-tags": "^delete-me$",
       "use-regex": "true"
     }
   }

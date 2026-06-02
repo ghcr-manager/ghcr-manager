@@ -396,3 +396,6 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
     - action argv preparation and artifact-download simplification
     - multi-arch manifest classification refinement
     - cleanup audit-state correctness and DB-merge tag metadata preservation
+- Scenario tag naming note:
+  - cleanup and graph scenario seeds now publish short plain tags like `delete-me`, `keep-me`, `ghost`, and `keep`
+  - scenario-prefixed tag names were removed because the package name already carries the scenario identity
