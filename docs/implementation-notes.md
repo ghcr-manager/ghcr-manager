@@ -85,6 +85,9 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
       in either direction through manifests not retained by surviving real tags
     - retained boundary is defined as surviving non-sha tagged manifests plus their descendants via
       `manifest_reachability`
+    - the recursive delete-component walk no longer carries a `|digest|...` path string for cycle detection; it now uses
+      membership recursion with `UNION` over `(source_digest, member_digest)` and assigns connected members a coarse
+      post-descendant hop bucket instead of exact undirected shortest-path depth
     - selected tagged `index_manifest` roots now have one extra narrow `untag-only` path for the remaining mixed
       cosign+attestation shape: if the selected index has a direct signature referrer and every direct non-helper
       `image-child` child is already retained by surviving real tags, the selected index is treated as `untag-only`

@@ -196,9 +196,7 @@ export class PlannerPlanArtifacts {
         SELECT
           dtc.source_version_id,
           dtc.source_digest,
-          dtc.member_version_id,
           dtc.member_digest,
-          dtc.member_manifest_kind,
           dtc.hops_from_root,
           dtc.member_role
         FROM direct_target_closure dtc
@@ -224,30 +222,20 @@ export class PlannerPlanArtifacts {
         FROM manifest_edges me
         WHERE me.scan_id = ?
       ),
-      raw_delete_component AS (
+      delete_component_members AS (
         SELECT
           seed.source_version_id,
           seed.source_digest,
-          seed.member_version_id,
-          seed.member_digest,
-          seed.member_manifest_kind,
-          seed.hops_from_root,
-          seed.member_role,
-          '|' || seed.member_digest || '|' AS path
+          seed.member_digest
         FROM closure_seed seed
 
-        UNION ALL
+        UNION
 
         SELECT
           walk.source_version_id,
           walk.source_digest,
-          m.version_id AS member_version_id,
-          m.digest AS member_digest,
-          m.manifest_kind AS member_manifest_kind,
-          walk.hops_from_root + 1 AS hops_from_root,
-          'connected' AS member_role,
-          walk.path || m.digest || '|' AS path
-        FROM raw_delete_component walk
+          m.digest AS member_digest
+        FROM delete_component_members walk
         JOIN undirected_edges edge
           ON edge.source_digest = walk.member_digest
         JOIN manifests m
@@ -258,36 +246,64 @@ export class PlannerPlanArtifacts {
             FROM retained_manifests retained
             WHERE retained.digest = m.digest
           )
-          AND instr(walk.path, '|' || m.digest || '|') = 0
+      ),
+      source_seed_hops AS (
+        SELECT
+          seed.source_digest,
+          MAX(seed.hops_from_root) AS max_seed_hops
+        FROM closure_seed seed
+        GROUP BY seed.source_digest
+      ),
+      descendant_hops AS (
+        SELECT
+          dtc.source_digest,
+          dtc.member_digest,
+          MIN(dtc.hops_from_root) AS min_hops_from_root
+        FROM direct_target_closure dtc
+        WHERE dtc.member_role = 'descendant'
+        GROUP BY dtc.source_digest, dtc.member_digest
       )
       SELECT
         walk.source_version_id,
         walk.source_digest,
-        MIN(walk.member_version_id) AS member_version_id,
+        MIN(member_manifest.version_id) AS member_version_id,
         walk.member_digest,
-        MIN(walk.member_manifest_kind) AS member_manifest_kind,
-        MIN(walk.hops_from_root) AS hops_from_root,
+        MIN(member_manifest.manifest_kind) AS member_manifest_kind,
+        CASE
+          WHEN walk.member_digest = walk.source_digest
+            THEN 0
+          WHEN descendant_hops.min_hops_from_root IS NOT NULL
+            THEN descendant_hops.min_hops_from_root
+          ELSE source_seed_hops.max_seed_hops + 1
+        END AS hops_from_root,
         CASE
           WHEN walk.member_digest = walk.source_digest
             THEN 'root'
-          WHEN EXISTS (
-            SELECT 1
-            FROM direct_target_closure seed
-            WHERE seed.source_digest = walk.source_digest
-              AND seed.member_digest = walk.member_digest
-              AND seed.member_role = 'descendant'
-          )
+          WHEN descendant_hops.min_hops_from_root IS NOT NULL
             THEN 'descendant'
           ELSE 'connected'
         END AS member_role
-      FROM raw_delete_component walk
-      GROUP BY walk.source_version_id, walk.source_digest, walk.member_digest
+      FROM delete_component_members walk
+      JOIN manifests member_manifest
+        ON member_manifest.scan_id = ?
+       AND member_manifest.digest = walk.member_digest
+      JOIN source_seed_hops
+        ON source_seed_hops.source_digest = walk.source_digest
+      LEFT JOIN descendant_hops
+        ON descendant_hops.source_digest = walk.source_digest
+       AND descendant_hops.member_digest = walk.member_digest
+      GROUP BY
+        walk.source_version_id,
+        walk.source_digest,
+        walk.member_digest,
+        descendant_hops.min_hops_from_root,
+        source_seed_hops.max_seed_hops
       ORDER BY walk.source_digest, hops_from_root, walk.member_digest
     `;
     return this.#sql
       .all<
         Parameters<typeof mapClosureManifestRow>[0]
-      >(sql, [scanId, scanId, scanId, scanId, scanId, scanId, scanId, scanId])
+      >(sql, [scanId, scanId, scanId, scanId, scanId, scanId, scanId, scanId, scanId])
       .map(mapClosureManifestRow);
   }
 
