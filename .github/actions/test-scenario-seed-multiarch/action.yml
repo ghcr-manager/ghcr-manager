@@ -49,9 +49,30 @@ runs:
         cp "$GITHUB_ACTION_PATH/../../../tools/tests/fixtures/minimal-image/Dockerfile" "$keep_dir/Dockerfile"
         printf '%s\n' "${SCENARIO_ID} keep amd64" > "$keep_dir/payload.txt"
 
+        dummy_dir="$base_dir/dummy-amd64"
+        mkdir -p "$dummy_dir"
+        cp "$GITHUB_ACTION_PATH/../../../tools/tests/fixtures/minimal-image/Dockerfile" "$dummy_dir/Dockerfile"
+        printf '%s\n' "${SCENARIO_ID} keep dummy" > "$dummy_dir/payload.txt"
+
         echo "delete_dir=$delete_dir" >> "$GITHUB_OUTPUT"
         echo "shared_dir=$shared_dir" >> "$GITHUB_OUTPUT"
         echo "keep_dir=$keep_dir" >> "$GITHUB_OUTPUT"
+        echo "dummy_dir=$dummy_dir" >> "$GITHUB_OUTPUT"
+
+    - name: Build blocked keep-dummy image
+      if: ${{ inputs.seed_strategy == 'blocked-shared-closure' }}
+      shell: bash
+      env:
+        DUMMY_DIR: ${{ steps.blocked-contexts.outputs.dummy_dir }}
+        IMAGE_REF: ${{ inputs.image_ref }}
+      run: |
+        set -euo pipefail
+        docker buildx build \
+          --platform linux/amd64 \
+          --provenance=false \
+          --push \
+          --tag "$IMAGE_REF:keep-dummy" \
+          "$DUMMY_DIR"
 
     - name: Build blocked delete amd64 child
       if: ${{ inputs.seed_strategy == 'blocked-shared-closure' }}

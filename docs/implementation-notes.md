@@ -403,3 +403,6 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
   - `blocked-shared-closure` now expects `ghcr-manager` to classify the selected delete branch as `fully-deletable`
   - the live end state already matched `ghcr-cleanup-action`; only the stale `ghcr-manager` audit expectation still
     claimed `blocked`
+- Blocked shared closure seed note:
+  - `blocked-shared-closure` now also seeds a standalone `keep-dummy` image tag
+  - that prevents the executor-matrix live cleanup from trying to remove the last remaining package tag
