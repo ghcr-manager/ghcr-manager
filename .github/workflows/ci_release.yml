@@ -78,6 +78,18 @@ jobs:
     with:
       executors: ghcr-manager
 
+  test-scenario-graph-matrix:
+    needs: [verify-release-refs]
+    uses: ./.github/workflows/test_scenario-graph-matrix.yml
+    permissions:
+      contents: read
+      packages: write
+      actions: write
+      id-token: write
+    secrets: inherit
+    with:
+      executors: ghcr-manager
+
   test-user-owner-cleanup:
     needs: [verify-release-refs]
     uses: ./.github/workflows/test_user-owner-cleanup.yml
