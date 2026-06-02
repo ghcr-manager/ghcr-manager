@@ -159,6 +159,9 @@ test("planner repository logs raw SQL statements and params at trace level", asy
   assert.ok(
     traceMessages.some((message) => message.includes("SELECT scan_id, owner, package_name, scan_completed_at"))
   );
+  assert.ok(
+    debugMessages.some((message) => message.includes("SELECT scan_id, owner, package_name, scan_completed_at"))
+  );
   assert.ok(traceMessages.some((message) => message.includes('PARAMS: ["acme","example"]')));
   assert.ok(debugMessages.some((message) => message.includes("SQL returned")));
 

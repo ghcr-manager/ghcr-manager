@@ -3,7 +3,7 @@ import test from "node:test";
 import { ManifestKinds } from "../../../src/core/index.js";
 import { PlannerRepository, ScanWriter, openDatabase } from "../../../src/db/index.js";
 
-test("planner repository traces SQL through the shared planner sql helper", () => {
+test("planner repository logs read SQL through the shared planner sql helper at debug level", () => {
   const database = openDatabase(":memory:");
   const writer = new ScanWriter(database);
   const traceMessages: string[] = [];
@@ -37,7 +37,7 @@ test("planner repository traces SQL through the shared planner sql helper", () =
 
   assert.equal(plan.directTargetRoots.length, 1);
   assert.ok(
-    traceMessages.some((message) => message.includes("SELECT scan_id, owner, package_name, scan_completed_at"))
+    debugMessages.some((message) => message.includes("SELECT scan_id, owner, package_name, scan_completed_at"))
   );
   assert.ok(debugMessages.some((message) => message.includes("SQL returned 1 row(s)")));
 
