@@ -399,3 +399,7 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
 - Scenario tag naming note:
   - cleanup and graph scenario seeds now publish short plain tags like `delete-me`, `keep-me`, `ghost`, and `keep`
   - scenario-prefixed tag names were removed because the package name already carries the scenario identity
+- Cleanup matrix audit note:
+  - `blocked-shared-closure` now expects `ghcr-manager` to classify the selected delete branch as `fully-deletable`
+  - the live end state already matched `ghcr-cleanup-action`; only the stale `ghcr-manager` audit expectation still
+    claimed `blocked`

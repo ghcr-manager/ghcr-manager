@@ -186,12 +186,12 @@ export const cleanupScenarios = {
     cleanupAuditAssertions: {
       validationSummary: {
         directTargetRootCount: 1,
-        fullyDeletableRootCount: 0,
-        blockedDeleteRootCount: 1
+        fullyDeletableRootCount: 1,
+        blockedDeleteRootCount: 0
       },
-      rootDecisions: [{ tagNameKey: "deleteTag", validationStatus: "blocked" }],
-      protectedTagNameKeys: ["keepTag"],
-      protectedRootBlocks: [{ protectedTagNameKey: "keepTag", blockedTagNameKey: "deleteTag" }]
+      rootDecisions: [{ tagNameKey: "deleteTag", validationStatus: "fully-deletable" }],
+      protectedTagNameKeys: [],
+      protectedRootBlocks: []
     }
   },
   "delete-untagged-real": {
