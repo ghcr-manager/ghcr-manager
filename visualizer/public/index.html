@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ghcr-manager visualizer</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="layout">
+      <section class="controls">
+        <h1>ghcr-manager visualizer</h1>
+        <form id="search-form" autocomplete="off">
+          <label>
+            Owner
+            <select id="owner" name="owner" required>
+              <option value="">Select owner</option>
+            </select>
+          </label>
+          <label>
+            Package
+            <select id="package" name="package" required disabled>
+              <option value="">Select package</option>
+            </select>
+          </label>
+          <label>
+            Scan ID
+            <select id="scan-id" name="scan_id" disabled>
+              <option value="">Latest completed scan</option>
+            </select>
+          </label>
+          <label>
+            Compare Scan ID
+            <select id="compare-scan-id" name="compare_scan_id" disabled>
+              <option value="">None</option>
+            </select>
+          </label>
+          <label>
+            Lookup
+            <select id="lookup-mode" name="lookup_mode">
+              <option value="tag">Tag</option>
+              <option value="digest">Digest</option>
+            </select>
+          </label>
+          <label>
+            Value
+            <input id="lookup-value" name="lookup_value" list="lookup-suggestions" autocomplete="off" required />
+          </label>
+          <label>
+            Depth
+            <input id="depth" name="depth" type="number" min="0" max="30" value="5" required />
+          </label>
+          <button type="submit">Load graph</button>
+        </form>
+        <div class="legend">
+          <h2>Edges</h2>
+          <p><span class="legend-line solid"></span> image-child</p>
+          <p><span class="legend-line dashed"></span> referrer</p>
+          <p><span class="legend-line dotted"></span> digest-tag-referrer</p>
+        </div>
+        <div id="status" class="status"></div>
+      </section>
+      <section class="graph-panel">
+        <div class="graph-toolbar" aria-label="Graph controls">
+          <button id="zoom-in" type="button" title="Zoom in">+</button>
+          <button id="zoom-out" type="button" title="Zoom out">-</button>
+          <button id="zoom-fit" type="button" title="Fit graph">Fit</button>
+        </div>
+        <div id="graph"></div>
+      </section>
+      <aside class="details">
+        <h2>Manifest</h2>
+        <div id="details-empty">Select a manifest.</div>
+        <dl id="details" hidden>
+          <dt>Actions</dt>
+          <dd>
+            <div class="detail-actions">
+              <button id="expand-node" type="button" disabled>Expand 1 hop</button>
+              <button id="center-node" type="button" disabled>Center here</button>
+              <button id="show-raw-json" type="button" disabled>View raw JSON</button>
+            </div>
+          </dd>
+          <dt>Digest</dt>
+          <dd id="detail-digest"></dd>
+          <dt>Version</dt>
+          <dd id="detail-version"></dd>
+          <dt>Created</dt>
+          <dd id="detail-created-at"></dd>
+          <dt>Updated</dt>
+          <dd id="detail-updated-at"></dd>
+          <dt>Kind</dt>
+          <dd id="detail-kind"></dd>
+          <dt>Media Type</dt>
+          <dd id="detail-media-type"></dd>
+          <dt>Platform</dt>
+          <dd id="detail-platform"></dd>
+          <dt>Artifact Type</dt>
+          <dd id="detail-artifact-type"></dd>
+          <dt>Subject</dt>
+          <dd id="detail-subject"></dd>
+          <dt>Tags</dt>
+          <dd id="detail-tags"></dd>
+        </dl>
+      </aside>
+    </main>
+    <datalist id="lookup-suggestions"></datalist>
+    <dialog id="raw-json-dialog" class="raw-json-dialog">
+      <div class="raw-json-dialog__header">
+        <h2>Raw JSON</h2>
+        <button id="close-raw-json" type="button">Close</button>
+      </div>
+      <pre id="raw-json-content"></pre>
+    </dialog>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

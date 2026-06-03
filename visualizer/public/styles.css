@@ -1,0 +1,235 @@
+body {
+  margin: 0;
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  background: linear-gradient(180deg, #edf2f0 0%, #dde7e2 100%);
+  color: #112218;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 20rem 1fr 24rem;
+  min-height: 100vh;
+}
+
+.controls,
+.details {
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(8px);
+  min-width: 0;
+}
+
+.controls {
+  border-right: 1px solid #b7c8bf;
+  position: relative;
+  z-index: 1;
+}
+
+.details {
+  border-left: 1px solid #b7c8bf;
+  overflow: auto;
+}
+
+.graph-panel {
+  position: relative;
+  min-width: 0;
+}
+
+.graph-toolbar {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  z-index: 2;
+}
+
+.graph-toolbar button {
+  min-width: 3rem;
+  background: rgba(29, 79, 58, 0.92);
+  border-color: #1d4f3a;
+  box-shadow: 0 0.2rem 0.8rem rgba(16, 32, 23, 0.18);
+}
+
+#graph {
+  width: 100%;
+  height: 100vh;
+}
+
+form {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.95rem;
+  min-width: 0;
+}
+
+input,
+select,
+button {
+  font: inherit;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.5rem;
+  border: 1px solid #94a99d;
+}
+
+.controls input,
+.controls select,
+.controls form > button {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+button {
+  cursor: pointer;
+  background: #1d4f3a;
+  color: #fff;
+  border-color: #1d4f3a;
+}
+
+.detail-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.detail-actions button {
+  background: #325745;
+  border-color: #325745;
+}
+
+.raw-json-dialog {
+  width: min(70rem, calc(100vw - 4rem));
+  height: min(80vh, 52rem);
+  border: 1px solid #94a99d;
+  border-radius: 0.75rem;
+  padding: 0;
+}
+
+.raw-json-dialog::backdrop {
+  background: rgba(16, 32, 23, 0.45);
+}
+
+.raw-json-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #d1ddd6;
+}
+
+.raw-json-dialog__header h2 {
+  margin: 0;
+}
+
+.raw-json-dialog__header button {
+  background: #325745;
+  border-color: #325745;
+  color: #fff;
+}
+
+#raw-json-content {
+  margin: 0;
+  padding: 1rem 1.25rem 1.5rem;
+  height: calc(100% - 4.5rem);
+  overflow: auto;
+  white-space: pre;
+  word-break: normal;
+}
+
+.status {
+  margin-top: 1rem;
+  min-height: 1.5rem;
+  font-size: 0.95rem;
+}
+
+.legend {
+  margin-top: 1.5rem;
+}
+
+.legend-line {
+  display: inline-block;
+  width: 2.5rem;
+  border-top: 3px solid #3d5a4a;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+}
+
+.legend-line.dashed {
+  border-top-style: dashed;
+}
+
+.legend-line.dotted {
+  border-top-style: dotted;
+}
+
+dl {
+  margin: 0;
+}
+
+dt {
+  font-weight: 700;
+  margin-top: 0.9rem;
+}
+
+dd {
+  margin: 0.2rem 0 0;
+  word-break: break-word;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
+}
+
+.tag {
+  display: inline-block;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  background: #e7eeea;
+}
+
+.tag.added {
+  color: #1f6f2c;
+  background: #d9f0dc;
+}
+
+.tag.removed {
+  color: #8d1f17;
+  background: #f6dbd8;
+}
+
+pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 1100px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .controls,
+  .details {
+    border: 0;
+  }
+
+  .graph-toolbar {
+    top: 0.75rem;
+    right: 0.75rem;
+  }
+
+  #graph {
+    height: 60vh;
+  }
+}

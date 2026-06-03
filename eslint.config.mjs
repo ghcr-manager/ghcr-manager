@@ -3,7 +3,7 @@ import { defineConfig } from "eslint/config";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 import yml from "eslint-plugin-yml";
-import { onlyIndexCrossFolderRule } from "./tools/eslint-rules/only-index-cross-folder.mjs";
+import { onlyIndexCrossFolderRule } from "./tools/tests/eslint-rules/only-index-cross-folder.mjs";
 
 /** @type {any[]} */
 const _tsRecommendedConfigs = /** @type {any[]} */ (tseslint.configs.recommended);
@@ -15,7 +15,7 @@ export default defineConfig(
   js.configs.recommended,
   ..._tsRecommendedConfigs,
   {
-    files: ["src/**/*.ts", "tests/**/*.ts"],
+    files: ["src/**/*.ts", "tests/**/*.ts", "visualizer/src/**/*.ts", "visualizer/tests/**/*.ts"],
     languageOptions: {
       globals: {
         ...globals.node

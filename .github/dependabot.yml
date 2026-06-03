@@ -14,7 +14,9 @@ updates:
           - "*"
 
   - package-ecosystem: "npm"
-    directory: "/"
+    directories:
+      - "/"
+      - "/visualizer"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
@@ -24,3 +26,8 @@ updates:
       npm:
         patterns:
           - "*"
+    ignore:
+      # ignore to keep in sync with node24 used by GH runners
+      - dependency-name: "@types/node"
+        update-types:
+          - "version-update:semver-major"

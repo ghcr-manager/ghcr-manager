@@ -1,0 +1,47 @@
+{
+  "name": "ghcr-manager-visualizer",
+  "version": "0.9.7",
+  "description": "Inspect ghcr-manager SQLite scan databases in a local browser graph visualizer.",
+  "type": "module",
+  "homepage": "https://github.com/gh-workflow/ghcr-manager#readme",
+  "bugs": {
+    "url": "https://github.com/gh-workflow/ghcr-manager/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gh-workflow/ghcr-manager"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "files": [
+    "dist/public",
+    "dist/src",
+    "README.md"
+  ],
+  "bin": {
+    "ghcr-manager-visualizer": "./dist/src/index.js"
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.json && node scripts/copy-public.mjs",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/src/index.js",
+    "typecheck": "tsc --noEmit --project tsconfig.json",
+    "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "test": "bash -lc 'shopt -s globstar nullglob; node --import tsx --test tests/**/*.test.ts'"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.9.0",
+    "cytoscape": "^3.33.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^24.12.4",
+    "eslint": "^10.2.1",
+    "globals": "^17.5.0",
+    "tsx": "^4.20.6",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.46.2"
+  }
+}

@@ -1,13 +1,17 @@
 #!/usr/bin/env node
 /* global console, process */
 
-import { readdir } from "node:fs/promises";
+import { access, readdir } from "node:fs/promises";
 import path from "node:path";
 
-const srcRoot = path.resolve("src");
 const violations = [];
+const srcRoots = [path.resolve("src"), path.resolve("visualizer/src")];
 
-await walk(srcRoot);
+for (const srcRoot of srcRoots) {
+  if (await exists(srcRoot)) {
+    await walk(srcRoot);
+  }
+}
 
 if (violations.length > 0) {
   for (const violation of violations) {
@@ -36,5 +40,14 @@ async function walk(directoryPath) {
     violations.push(
       `Non-public TypeScript source files in src/ must start with _: ${path.relative(process.cwd(), entryPath)}`
     );
+  }
+}
+
+async function exists(pathname) {
+  try {
+    await access(pathname);
+    return true;
+  } catch {
+    return false;
   }
 }

@@ -11,8 +11,11 @@
   },
   "version": "0.9.7",
   "type": "module",
+  "workspaces": [
+    "visualizer"
+  ],
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=24.0.0"
   },
   "files": [
     "dist",
@@ -26,19 +29,22 @@
   },
   "scripts": {
     "build": "tsc --project tsconfig.json",
-    "coverage": "c8 --src src --reporter=text --reporter=text-summary node --import tsx --test",
+    "build:visualizer": "npm run build --workspace visualizer",
     "ghcr-manager": "tsx src/cli/index.ts",
     "ghcr-manager:dist": "node dist/cli/index.js",
+    "visualize": "npm run dev --workspace visualizer --",
+    "visualizer:start": "npm run start --workspace visualizer --",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "lint": "npm run check:file-names && npm run check:test-mapping && npm run typecheck && npm run lint:ts && npm run lint:yaml && npm run lint:markdown && npm run format:check",
+    "lint": "npm run check:file-names && npm run check:test-mapping && npm run typecheck && npm run typecheck --workspace visualizer && npm run lint:ts && npm run lint:yaml && npm run lint:markdown && npm run lint --workspace visualizer && npm run format:check",
     "check:file-names": "node tools/tests/check-src-file-names.mjs",
     "check:test-mapping": "node tools/tests/check-test-mapping.mjs",
     "lint:ts": "eslint \"src/**/*.ts\" \"tests/**/*.ts\"",
     "lint:yaml": "eslint \".github/**/*.yml\" \"*.yml\"",
     "lint:markdown": "markdownlint-cli2",
     "typecheck": "tsc --noEmit --project tsconfig.json",
-    "test": "node --import tsx --test"
+    "test": "bash -lc 'shopt -s globstar nullglob; node --import tsx --test tests/**/*.test.ts' && npm run test --workspace visualizer",
+    "coverage": "bash -lc 'shopt -s globstar nullglob; c8 --src src --reporter=text --reporter=text-summary node --import tsx --test tests/**/*.test.ts'"
   },
   "dependencies": {
     "better-sqlite3": "^12.9.0"
@@ -46,10 +52,10 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/better-sqlite3": "^7.6.13",
-    "@types/node": "^25.6.0",
+    "@types/node": "^24.12.4",
     "c8": "^11.0.0",
     "eslint": "^10.2.1",
-    "eslint-plugin-yml": "^3.3.2",
+    "eslint-plugin-yml": "^3.4.0",
     "globals": "^17.5.0",
     "markdownlint-cli2": "^0.22.1",
     "prettier": "^3.8.3",
