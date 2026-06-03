@@ -5,7 +5,7 @@ run-name: Test Delete Test Org Packages
   workflow_dispatch:
     inputs:
       confirm_test_org:
-        description: Must exactly match GHCR_TEST_OWNER to confirm deletion.
+        description: Must exactly match GH_TEST_ORG to confirm deletion.
         required: true
         default: ""
         type: string
@@ -30,14 +30,14 @@ jobs:
         shell: bash
         env:
           CONFIRM_TEST_ORG: ${{ inputs.confirm_test_org }}
-          GHCR_TEST_OWNER: ${{ vars.GHCR_TEST_OWNER }}
-          GHCR_TEST_PAT: ${{ secrets.GHCR_TEST_PAT }}
+          GH_TEST_ORG: ${{ vars.GH_TEST_ORG }}
+          GH_TEST_PAT: ${{ secrets.GH_TEST_PAT }}
         run: |
           set -euo pipefail
-          [[ -n "$GHCR_TEST_OWNER" ]] || { echo "Missing repo variable GHCR_TEST_OWNER" >&2; exit 1; }
-          [[ -n "$GHCR_TEST_PAT" ]] || { echo "Missing repo secret GHCR_TEST_PAT" >&2; exit 1; }
-          [[ "$CONFIRM_TEST_ORG" == "$GHCR_TEST_OWNER" ]] || {
-            echo "confirm_test_org must exactly match GHCR_TEST_OWNER." >&2
+          [[ -n "$GH_TEST_ORG" ]] || { echo "Missing repo variable GH_TEST_ORG" >&2; exit 1; }
+          [[ -n "$GH_TEST_PAT" ]] || { echo "Missing repo secret GH_TEST_PAT" >&2; exit 1; }
+          [[ "$CONFIRM_TEST_ORG" == "$GH_TEST_ORG" ]] || {
+            echo "confirm_test_org must exactly match GH_TEST_ORG." >&2
             exit 1
           }
 
@@ -49,12 +49,12 @@ jobs:
       - name: Delete matching test-org packages
         shell: bash
         env:
-          GHCR_TEST_OWNER: ${{ vars.GHCR_TEST_OWNER }}
-          GHCR_TEST_PAT: ${{ secrets.GHCR_TEST_PAT }}
+          GH_TEST_ORG: ${{ vars.GH_TEST_ORG }}
+          GH_TEST_PAT: ${{ secrets.GH_TEST_PAT }}
           PACKAGE_NAME_CONTAINS: ${{ inputs.package_name_contains }}
         run: |
           set -euo pipefail
           node tools/tests/delete-ghcr-test-org-packages.mjs \
-            "$GHCR_TEST_OWNER" \
-            "$GHCR_TEST_PAT" \
+            "$GH_TEST_ORG" \
+            "$GH_TEST_PAT" \
             "$PACKAGE_NAME_CONTAINS"

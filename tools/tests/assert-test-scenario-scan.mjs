@@ -4,6 +4,7 @@
 import assert from "node:assert/strict";
 import Database from "better-sqlite3";
 import { scenarios } from "./test-scenarios/_definitions.mjs";
+import { resolveScenarioTagNames } from "./test-scenarios/_resolve-tag-names.mjs";
 
 const scenarioId = process.argv[2];
 const dbPath = process.argv[3];
@@ -18,15 +19,14 @@ if (!scenario) {
 }
 
 const scanAssertions = scenario.scanAssertions ?? [];
+const latestScanAssertions = scenario.latestScanAssertions;
 const signatureSubjectAssertions = scenario.signatureSubjectAssertions ?? [];
-if (scanAssertions.length === 0 && signatureSubjectAssertions.length === 0) {
+if (!latestScanAssertions && scanAssertions.length === 0 && signatureSubjectAssertions.length === 0) {
   process.stdout.write(`No scan assertions configured for scenario '${scenarioId}'.\n`);
   process.exit(0);
 }
 
-const tagNames = Object.fromEntries(
-  Object.entries(scenario.tagNames ?? {}).map(([key, value]) => [key, `${scenario.id}--${value}`])
-);
+const tagNames = resolveScenarioTagNames(scenario);
 const database = new Database(dbPath, { readonly: true });
 
 const latestScan = database
@@ -43,6 +43,52 @@ const latestScan = database
 
 assert.ok(latestScan, `database '${dbPath}' did not contain a completed package scan`);
 
+if (latestScanAssertions) {
+  const counts = database
+    .prepare(
+      `
+        SELECT
+          (SELECT COUNT(*)
+           FROM manifests
+           WHERE scan_id = ?) AS manifestCount,
+          (SELECT COUNT(DISTINCT tag)
+           FROM tags
+           WHERE scan_id = ?) AS tagCount
+      `
+    )
+    .get(latestScan.scan_id, latestScan.scan_id);
+
+  assert.equal(
+    counts.manifestCount,
+    latestScanAssertions.manifestCount,
+    `scan ${latestScan.scan_id} had an unexpected manifest count`
+  );
+  assert.equal(
+    counts.tagCount,
+    latestScanAssertions.tagCount,
+    `scan ${latestScan.scan_id} had an unexpected tag count`
+  );
+
+  for (const tagNameKey of latestScanAssertions.absentTagNameKeys ?? []) {
+    const tag = tagNames[tagNameKey];
+    assert.ok(tag, `scenario '${scenarioId}' is missing tag '${tagNameKey}' for latest scan assertions`);
+
+    const row = database
+      .prepare(
+        `
+          SELECT 1
+          FROM tags
+          WHERE scan_id = ?
+            AND tag = ?
+          LIMIT 1
+        `
+      )
+      .get(latestScan.scan_id, tag);
+
+    assert.equal(row, undefined, `scan ${latestScan.scan_id} unexpectedly retained tag '${tag}'`);
+  }
+}
+
 for (const scanAssertion of scanAssertions) {
   const tag = tagNames[scanAssertion.tagNameKey];
   assert.ok(tag, `scenario '${scenarioId}' is missing tag '${scanAssertion.tagNameKey}' for scan assertions`);
@@ -54,7 +100,17 @@ for (const scanAssertion of scanAssertions) {
           t.tag,
           m.manifest_kind,
           mp.raw_json,
-          roots.has_ancestor
+          CASE
+            WHEN EXISTS (
+              SELECT 1
+              FROM manifest_edges me
+              WHERE me.scan_id = m.scan_id
+                AND me.child_digest = m.digest
+                AND me.edge_kind != 'digest-tag-referrer'
+            )
+              THEN 1
+            ELSE 0
+          END AS has_ancestor
         FROM tags t
         JOIN manifests m
           ON m.scan_id = t.scan_id
@@ -62,9 +118,6 @@ for (const scanAssertion of scanAssertions) {
         JOIN manifest_payloads mp
           ON mp.scan_id = m.scan_id
          AND mp.digest = m.digest
-        JOIN v_scan_root_manifests roots
-          ON roots.scan_id = m.scan_id
-         AND roots.root_version_id = m.version_id
         WHERE t.scan_id = ?
           AND t.tag = ?
       `
@@ -102,12 +155,12 @@ for (const signatureAssertion of signatureSubjectAssertions) {
   const keepRoot = database
     .prepare(
       `
-        SELECT roots.root_digest
-        FROM v_scan_root_manifests roots
-        JOIN tags t
-          ON t.scan_id = roots.scan_id
-         AND t.version_id = roots.root_version_id
-        WHERE roots.scan_id = ?
+        SELECT m.digest AS root_digest
+        FROM tags t
+        JOIN manifests m
+          ON m.scan_id = t.scan_id
+         AND m.version_id = t.version_id
+        WHERE t.scan_id = ?
           AND t.tag = ?
       `
     )
@@ -127,9 +180,6 @@ for (const signatureAssertion of signatureSubjectAssertions) {
         JOIN manifests subjects
           ON subjects.scan_id = sig.scan_id
          AND subjects.digest = sig.subject_digest
-        JOIN v_scan_root_manifests sig_roots
-          ON sig_roots.scan_id = sig.scan_id
-         AND sig_roots.root_digest = sig.digest
         JOIN manifest_reachability mr
           ON mr.scan_id = sig.scan_id
          AND mr.ancestor_digest = ?
@@ -138,7 +188,17 @@ for (const signatureAssertion of signatureSubjectAssertions) {
           AND sig.artifact_type = ?
           AND sig.subject_digest IS NOT NULL
           AND subjects.manifest_kind = ?
-          ${signatureAssertion.requireUntaggedRoots ? "AND sig_roots.tag_count = 0" : ""}
+          ${
+            signatureAssertion.requireUntaggedRoots
+              ? `AND NOT EXISTS (
+                   SELECT 1
+                   FROM tags sig_tags
+                   WHERE sig_tags.scan_id = sig.scan_id
+                     AND sig_tags.version_id = sig.version_id
+                     AND sig_tags.is_digest_tag = 0
+                 )`
+              : ""
+          }
       `
     )
     .all(
@@ -160,5 +220,5 @@ for (const signatureAssertion of signatureSubjectAssertions) {
 }
 
 process.stdout.write(
-  `Verified ${scanAssertions.length} scan assertion(s) and ${signatureSubjectAssertions.length} signature assertion(s) for scenario '${scenarioId}'.\n`
+  `Verified ${latestScanAssertions ? 1 : 0} latest-scan assertion set(s), ${scanAssertions.length} scan assertion(s), and ${signatureSubjectAssertions.length} signature assertion(s) for scenario '${scenarioId}'.\n`
 );

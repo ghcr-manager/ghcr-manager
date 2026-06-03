@@ -61,14 +61,14 @@ jobs:
       - name: Require test org configuration
         shell: bash
         env:
-          GHCR_TEST_OWNER: ${{ vars.GHCR_TEST_OWNER }}
-          GHCR_TEST_PAT_USERNAME: ${{ vars.GHCR_TEST_PAT_USERNAME }}
-          GHCR_TEST_PAT: ${{ secrets.GHCR_TEST_PAT }}
+          GH_TEST_ORG: ${{ vars.GH_TEST_ORG }}
+          GH_TEST_PAT_USERNAME: ${{ vars.GH_TEST_PAT_USERNAME }}
+          GH_TEST_PAT: ${{ secrets.GH_TEST_PAT }}
         run: |
           set -euo pipefail
-          [[ -n "$GHCR_TEST_OWNER" ]] || { echo "Missing repo variable GHCR_TEST_OWNER" >&2; exit 1; }
-          [[ -n "$GHCR_TEST_PAT_USERNAME" ]] || { echo "Missing repo variable GHCR_TEST_PAT_USERNAME" >&2; exit 1; }
-          [[ -n "$GHCR_TEST_PAT" ]] || { echo "Missing repo secret GHCR_TEST_PAT" >&2; exit 1; }
+          [[ -n "$GH_TEST_ORG" ]] || { echo "Missing repo variable GH_TEST_ORG" >&2; exit 1; }
+          [[ -n "$GH_TEST_PAT_USERNAME" ]] || { echo "Missing repo variable GH_TEST_PAT_USERNAME" >&2; exit 1; }
+          [[ -n "$GH_TEST_PAT" ]] || { echo "Missing repo secret GH_TEST_PAT" >&2; exit 1; }
 
       - name: Resolve scenario
         id: scenario
@@ -77,7 +77,7 @@ jobs:
           REPOSITORY_NAME: ${{ github.event.repository.name }}
           RUNNER_TEMP: ${{ runner.temp }}
           SCENARIO: ${{ inputs.scenario }}
-          TEST_OWNER: ${{ vars.GHCR_TEST_OWNER }}
+          TEST_OWNER: ${{ vars.GH_TEST_ORG }}
         run: |
           set -euo pipefail
           work_dir="$RUNNER_TEMP/ghcr-manager/scenario-scan-${SCENARIO}"
@@ -95,8 +95,8 @@ jobs:
       - name: Clear scenario package
         shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GHCR_TEST_PAT }}
-          OWNER: ${{ vars.GHCR_TEST_OWNER }}
+          GITHUB_TOKEN: ${{ secrets.GH_TEST_PAT }}
+          OWNER: ${{ vars.GH_TEST_ORG }}
           PACKAGE: ${{ steps.scenario.outputs.package_name }}
         run: |
           set -euo pipefail
@@ -107,16 +107,16 @@ jobs:
         with:
           image_ref: ${{ steps.scenario.outputs.image_ref }}
           seed_strategy: ${{ steps.scenario.outputs.seed_strategy }}
-          registry_username: ${{ vars.GHCR_TEST_PAT_USERNAME }}
-          registry_password: ${{ secrets.GHCR_TEST_PAT }}
+          registry_username: ${{ vars.GH_TEST_PAT_USERNAME }}
+          registry_password: ${{ secrets.GH_TEST_PAT }}
 
       - name: Scan scenario package
         id: ghcr-manager
         uses: ./
         with:
           command: scan
-          token: ${{ secrets.GHCR_TEST_PAT }}
-          owner: ${{ vars.GHCR_TEST_OWNER }}
+          token: ${{ secrets.GH_TEST_PAT }}
+          owner: ${{ vars.GH_TEST_ORG }}
           package: ${{ steps.scenario.outputs.package_name }}
           db-path: ${{ steps.scenario.outputs.db_path }}
           upload-artifacts: ${{ inputs.upload_artifacts }}

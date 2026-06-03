@@ -1,0 +1,297 @@
+name: Test Scenario Seed Multiarch
+description: Seed complex multi-arch and signature-oriented GHCR test scenarios.
+
+inputs:
+  image_ref:
+    description: Full ghcr.io image reference without tag.
+    required: true
+  seed_strategy:
+    description: Seed strategy identifier.
+    required: true
+  registry_username:
+    description: GHCR username used for docker login.
+    required: true
+  registry_password:
+    description: GHCR token or password used for docker login.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Mark multi-arch scenario handled
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "GHCR_MANAGER_SCENARIO_SEED_HANDLED=true" >> "$GITHUB_ENV"
+
+    - name: Prepare blocked-shared-closure contexts
+      if: ${{ inputs.seed_strategy == 'blocked-shared-closure' }}
+      id: blocked-contexts
+      shell: bash
+      env:
+        SCENARIO_ID: blocked-shared-closure
+      run: |
+        set -euo pipefail
+        base_dir="$(mktemp -d)"
+
+        delete_dir="$base_dir/delete-amd64"
+        mkdir -p "$delete_dir"
+        cp "$GITHUB_ACTION_PATH/../../../tools/tests/fixtures/minimal-image/Dockerfile" "$delete_dir/Dockerfile"
+        printf '%s\n' "${SCENARIO_ID} delete amd64" > "$delete_dir/payload.txt"
+
+        shared_dir="$base_dir/shared-arm64"
+        mkdir -p "$shared_dir"
+        cp "$GITHUB_ACTION_PATH/../../../tools/tests/fixtures/minimal-image/Dockerfile" "$shared_dir/Dockerfile"
+        printf '%s\n' "${SCENARIO_ID} shared arm64" > "$shared_dir/payload.txt"
+
+        keep_dir="$base_dir/keep-amd64"
+        mkdir -p "$keep_dir"
+        cp "$GITHUB_ACTION_PATH/../../../tools/tests/fixtures/minimal-image/Dockerfile" "$keep_dir/Dockerfile"
+        printf '%s\n' "${SCENARIO_ID} keep amd64" > "$keep_dir/payload.txt"
+
+        dummy_dir="$base_dir/dummy-amd64"
+        mkdir -p "$dummy_dir"
+        cp "$GITHUB_ACTION_PATH/../../../tools/tests/fixtures/minimal-image/Dockerfile" "$dummy_dir/Dockerfile"
+        printf '%s\n' "${SCENARIO_ID} keep dummy" > "$dummy_dir/payload.txt"
+
+        echo "delete_dir=$delete_dir" >> "$GITHUB_OUTPUT"
+        echo "shared_dir=$shared_dir" >> "$GITHUB_OUTPUT"
+        echo "keep_dir=$keep_dir" >> "$GITHUB_OUTPUT"
+        echo "dummy_dir=$dummy_dir" >> "$GITHUB_OUTPUT"
+
+    - name: Build blocked keep-dummy image
+      if: ${{ inputs.seed_strategy == 'blocked-shared-closure' }}
+      shell: bash
+      env:
+        DUMMY_DIR: ${{ steps.blocked-contexts.outputs.dummy_dir }}
+        IMAGE_REF: ${{ inputs.image_ref }}
+      run: |
+        set -euo pipefail
+        docker buildx build \
+          --platform linux/amd64 \
+          --provenance=false \
+          --push \
+          --tag "$IMAGE_REF:keep-dummy" \
+          "$DUMMY_DIR"
+
+    - name: Build blocked delete amd64 child
+      if: ${{ inputs.seed_strategy == 'blocked-shared-closure' }}
+      id: blocked-delete-amd64
+      uses: ./.github/actions/test-registry-build-image
+      with:
+        context: ${{ steps.blocked-contexts.outputs.delete_dir }}
+        dockerfile: ${{ steps.blocked-contexts.outputs.delete_dir }}/Dockerfile
+        image_ref: ${{ inputs.image_ref }}
+        arch: blocked-shared-closure-source-delete-amd64
+        platform: linux/amd64
+        registry_username: ${{ inputs.registry_username }}
+        registry_password: ${{ inputs.registry_password }}
+
+    - name: Build blocked shared arm64 child
+      if: ${{ inputs.seed_strategy == 'blocked-shared-closure' }}
+      id: blocked-shared-arm64
+      uses: ./.github/actions/test-registry-build-image
+      with:
+        context: ${{ steps.blocked-contexts.outputs.shared_dir }}
+        dockerfile: ${{ steps.blocked-contexts.outputs.shared_dir }}/Dockerfile
+        image_ref: ${{ inputs.image_ref }}
+        arch: blocked-shared-closure-source-shared-arm64
+        platform: linux/arm64
+        registry_username: ${{ inputs.registry_username }}
+        registry_password: ${{ inputs.registry_password }}
+
+    - name: Build blocked keep amd64 child
+      if: ${{ inputs.seed_strategy == 'blocked-shared-closure' }}
+      id: blocked-keep-amd64
+      uses: ./.github/actions/test-registry-build-image
+      with:
+        context: ${{ steps.blocked-contexts.outputs.keep_dir }}
+        dockerfile: ${{ steps.blocked-contexts.outputs.keep_dir }}/Dockerfile
+        image_ref: ${{ inputs.image_ref }}
+        arch: blocked-shared-closure-source-keep-amd64
+        platform: linux/amd64
+        registry_username: ${{ inputs.registry_username }}
+        registry_password: ${{ inputs.registry_password }}
+
+    - name: Publish blocked delete index
+      if: ${{ inputs.seed_strategy == 'blocked-shared-closure' }}
+      uses: gh-workflow/multiarch-image-publish@c5eac5dd8f7ed6b39fffc6e2c2242966b4917260 # 0.2.1
+      with:
+        image_ref: ${{ inputs.image_ref }}
+        tags: |
+          delete-me
+        platform_digests: |
+          linux/amd64=${{ steps.blocked-delete-amd64.outputs.digest }}
+          linux/arm64=${{ steps.blocked-shared-arm64.outputs.digest }}
+        annotations: |
+          org.opencontainers.image.version=blocked-shared-closure-delete
+        publish_platform_tags: "false"
+
+    - name: Publish blocked keep index
+      if: ${{ inputs.seed_strategy == 'blocked-shared-closure' }}
+      uses: gh-workflow/multiarch-image-publish@c5eac5dd8f7ed6b39fffc6e2c2242966b4917260 # 0.2.1
+      with:
+        image_ref: ${{ inputs.image_ref }}
+        tags: |
+          keep-me
+        platform_digests: |
+          linux/amd64=${{ steps.blocked-keep-amd64.outputs.digest }}
+          linux/arm64=${{ steps.blocked-shared-arm64.outputs.digest }}
+        annotations: |
+          org.opencontainers.image.version=blocked-shared-closure-keep
+        publish_platform_tags: "false"
+
+    - name: Prepare docker-manifest-list-untag-only-shared-root contexts
+      if: ${{ inputs.seed_strategy == 'docker-manifest-list-untag-only-shared-root' }}
+      id: docker-manifest-list-contexts
+      shell: bash
+      env:
+        SCENARIO_ID: docker-manifest-list-untag-only-shared-root
+      run: |
+        set -euo pipefail
+        base_dir="$(mktemp -d)"
+
+        amd64_dir="$base_dir/amd64"
+        mkdir -p "$amd64_dir"
+        cp "$GITHUB_ACTION_PATH/../../../tools/tests/fixtures/minimal-image/Dockerfile" "$amd64_dir/Dockerfile"
+        printf '%s\n' "${SCENARIO_ID} amd64" > "$amd64_dir/payload.txt"
+
+        arm64_dir="$base_dir/arm64"
+        mkdir -p "$arm64_dir"
+        cp "$GITHUB_ACTION_PATH/../../../tools/tests/fixtures/minimal-image/Dockerfile" "$arm64_dir/Dockerfile"
+        printf '%s\n' "${SCENARIO_ID} arm64" > "$arm64_dir/payload.txt"
+
+        echo "amd64_dir=$amd64_dir" >> "$GITHUB_OUTPUT"
+        echo "arm64_dir=$arm64_dir" >> "$GITHUB_OUTPUT"
+
+    - name: Build docker-manifest-list-untag-only-shared-root amd64 child
+      if: ${{ inputs.seed_strategy == 'docker-manifest-list-untag-only-shared-root' }}
+      shell: bash
+      env:
+        AMD64_DIR: ${{ steps.docker-manifest-list-contexts.outputs.amd64_dir }}
+        GITHUB_RUN_ID: ${{ github.run_id }}
+        IMAGE_REF: ${{ inputs.image_ref }}
+        SCENARIO_ID: docker-manifest-list-untag-only-shared-root
+      run: |
+        set -euo pipefail
+        docker buildx build \
+          --platform linux/amd64 \
+          --provenance=false \
+          --push \
+          --tag "$IMAGE_REF:${GITHUB_RUN_ID}-${SCENARIO_ID}-amd64-test" \
+          "$AMD64_DIR"
+
+    - name: Build docker-manifest-list-untag-only-shared-root arm64 child
+      if: ${{ inputs.seed_strategy == 'docker-manifest-list-untag-only-shared-root' }}
+      shell: bash
+      env:
+        ARM64_DIR: ${{ steps.docker-manifest-list-contexts.outputs.arm64_dir }}
+        GITHUB_RUN_ID: ${{ github.run_id }}
+        IMAGE_REF: ${{ inputs.image_ref }}
+        SCENARIO_ID: docker-manifest-list-untag-only-shared-root
+      run: |
+        set -euo pipefail
+        docker buildx build \
+          --platform linux/arm64 \
+          --provenance=false \
+          --push \
+          --tag "$IMAGE_REF:${GITHUB_RUN_ID}-${SCENARIO_ID}-arm64-test" \
+          "$ARM64_DIR"
+
+    - name: Publish docker manifest-list-untag-only-shared-root
+      if: ${{ inputs.seed_strategy == 'docker-manifest-list-untag-only-shared-root' }}
+      shell: bash
+      env:
+        GITHUB_RUN_ID: ${{ github.run_id }}
+        IMAGE_REF: ${{ inputs.image_ref }}
+        SCENARIO_ID: docker-manifest-list-untag-only-shared-root
+      run: |
+        set -euo pipefail
+
+        source_amd64_ref="$IMAGE_REF:${GITHUB_RUN_ID}-${SCENARIO_ID}-amd64-test"
+        source_arm64_ref="$IMAGE_REF:${GITHUB_RUN_ID}-${SCENARIO_ID}-arm64-test"
+
+        for target_tag in delete-me keep-me; do
+          target_ref="$IMAGE_REF:${target_tag}"
+          docker manifest create "$target_ref" "$source_amd64_ref" "$source_arm64_ref"
+          docker manifest push "$target_ref"
+        done
+
+    - name: Prepare cosign referrer kept-multiarch contexts
+      if: >-
+        ${{
+          inputs.seed_strategy == 'cosign-referrer-kept-multiarch' ||
+          inputs.seed_strategy == 'cosign-referrer-kept-multiarch-index-signature'
+        }}
+      id: cosign-referrer-contexts
+      shell: bash
+      env:
+        SCENARIO_ID: ${{ inputs.seed_strategy }}
+      run: |
+        set -euo pipefail
+        base_dir="$(mktemp -d)"
+
+        amd64_dir="$base_dir/amd64"
+        mkdir -p "$amd64_dir"
+        cp "$GITHUB_ACTION_PATH/../../../tools/tests/fixtures/minimal-image/Dockerfile" "$amd64_dir/Dockerfile"
+        printf '%s\n' "${SCENARIO_ID} amd64" > "$amd64_dir/payload.txt"
+
+        arm64_dir="$base_dir/arm64"
+        mkdir -p "$arm64_dir"
+        cp "$GITHUB_ACTION_PATH/../../../tools/tests/fixtures/minimal-image/Dockerfile" "$arm64_dir/Dockerfile"
+        printf '%s\n' "${SCENARIO_ID} arm64" > "$arm64_dir/payload.txt"
+
+        echo "amd64_dir=$amd64_dir" >> "$GITHUB_OUTPUT"
+        echo "arm64_dir=$arm64_dir" >> "$GITHUB_OUTPUT"
+
+    - name: Build cosign referrer amd64 child
+      if: >-
+        ${{
+          inputs.seed_strategy == 'cosign-referrer-kept-multiarch' ||
+          inputs.seed_strategy == 'cosign-referrer-kept-multiarch-index-signature'
+        }}
+      id: cosign-referrer-amd64
+      uses: ./.github/actions/test-registry-build-image
+      with:
+        context: ${{ steps.cosign-referrer-contexts.outputs.amd64_dir }}
+        dockerfile: ${{ steps.cosign-referrer-contexts.outputs.amd64_dir }}/Dockerfile
+        image_ref: ${{ inputs.image_ref }}
+        arch: ${{ inputs.seed_strategy }}-source-amd64
+        platform: linux/amd64
+        registry_username: ${{ inputs.registry_username }}
+        registry_password: ${{ inputs.registry_password }}
+
+    - name: Build cosign referrer arm64 child
+      if: >-
+        ${{
+          inputs.seed_strategy == 'cosign-referrer-kept-multiarch' ||
+          inputs.seed_strategy == 'cosign-referrer-kept-multiarch-index-signature'
+        }}
+      id: cosign-referrer-arm64
+      uses: ./.github/actions/test-registry-build-image
+      with:
+        context: ${{ steps.cosign-referrer-contexts.outputs.arm64_dir }}
+        dockerfile: ${{ steps.cosign-referrer-contexts.outputs.arm64_dir }}/Dockerfile
+        image_ref: ${{ inputs.image_ref }}
+        arch: ${{ inputs.seed_strategy }}-source-arm64
+        platform: linux/arm64
+        registry_username: ${{ inputs.registry_username }}
+        registry_password: ${{ inputs.registry_password }}
+
+    - name: Publish cosign referrer kept multi-arch root
+      if: >-
+        ${{
+          inputs.seed_strategy == 'cosign-referrer-kept-multiarch' ||
+          inputs.seed_strategy == 'cosign-referrer-kept-multiarch-index-signature'
+        }}
+      uses: gh-workflow/multiarch-image-publish@c5eac5dd8f7ed6b39fffc6e2c2242966b4917260 # 0.2.1
+      with:
+        image_ref: ${{ inputs.image_ref }}
+        tags: |
+          keep-me
+        platform_digests: |
+          linux/amd64=${{ steps.cosign-referrer-amd64.outputs.digest }}
+          linux/arm64=${{ steps.cosign-referrer-arm64.outputs.digest }}
+        annotations: |
+          org.opencontainers.image.version=${{ inputs.seed_strategy }}
+        publish_platform_tags: "false"

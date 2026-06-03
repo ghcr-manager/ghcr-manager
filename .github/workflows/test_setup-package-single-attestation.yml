@@ -1,9 +1,9 @@
 # Builds:
-# - single: multi-arch manifest (tagged, with provenance and cosign signature)
-#   - single-amd64: image (tagged, with provenance and cosign signature)
+# - single: multi-arch manifest (tagged, with provenance, no cosign signature)
+#   - single-amd64: image (tagged, with provenance, no cosign signature)
 #   - single-arm64: image (tagged, with provenance and cosign signature)
 
-name: "Test: Setup Package Single"
+name: "Test: Setup Package Single Attestation"
 
 "on":
   workflow_dispatch:
@@ -15,8 +15,8 @@ permissions:
   id-token: write
 
 env:
-  PACKAGE: ${{ github.event.repository.name }}-test--single
-  IMAGE_REF: ghcr.io/${{ vars.GH_TEST_ORG }}/${{ github.event.repository.name }}-test--single
+  PACKAGE: ${{ github.event.repository.name }}-test--single-attestation
+  IMAGE_REF: ghcr.io/${{ vars.GH_TEST_ORG }}/${{ github.event.repository.name }}-test--single-attestation
 
 jobs:
   prepare-environment:
@@ -87,6 +87,15 @@ jobs:
           registry_username: ${{ vars.GH_TEST_PAT_USERNAME }}
           registry_password: ${{ secrets.GH_TEST_PAT }}
 
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Sign arm64 image only
+        shell: bash
+        run: |
+          set -euo pipefail
+          cosign sign --yes "${{ env.IMAGE_REF }}@${{ steps.build.outputs.digest }}"
+
   publish:
     name: Publish multi-arch image
     needs:
@@ -102,20 +111,34 @@ jobs:
           username: ${{ vars.GH_TEST_PAT_USERNAME }}
           password: ${{ secrets.GH_TEST_PAT }}
 
+      - name: Install regctl
+        uses: regclient/actions/regctl-installer@1b705e32d40851370799ea5814e83d0a5f6a70dc # v0.1.0
+
       - name: Publish multi-arch image
-        uses: gh-workflow/multiarch-image-publish@c5eac5dd8f7ed6b39fffc6e2c2242966b4917260 # 0.2.1
-        with:
-          image_ref: ${{ env.IMAGE_REF }}
-          tags: |
-            single
-          platform_digests: |
-            linux/amd64=${{ needs.build_amd64.outputs.digest }}
-            linux/arm64=${{ needs.build_arm64.outputs.digest }}
-          annotations: |
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.version=single
-          publish_platform_tags: "true"
+        shell: bash
+        run: |
+          set -euo pipefail
+          manifest_digest="$(
+            docker buildx imagetools create \
+              --dry-run \
+              --annotation "index:org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
+              --annotation "index:org.opencontainers.image.version=single" \
+              "${{ env.IMAGE_REF }}@${{ needs.build_amd64.outputs.digest }}" \
+              "${{ env.IMAGE_REF }}@${{ needs.build_arm64.outputs.digest }}" \
+            | regctl manifest put \
+                --by-digest \
+                "${{ env.IMAGE_REF }}" \
+                --format '{{ ( .Manifest.GetDescriptor ).Digest }}'
+          )"
+
+          regctl image copy "${{ env.IMAGE_REF }}@$manifest_digest" "${{ env.IMAGE_REF }}:single"
+          regctl image copy \
+            "${{ env.IMAGE_REF }}@${{ needs.build_amd64.outputs.digest }}" \
+            "${{ env.IMAGE_REF }}:single-amd64"
+          regctl image copy \
+            "${{ env.IMAGE_REF }}@${{ needs.build_arm64.outputs.digest }}" \
+            "${{ env.IMAGE_REF }}:single-arm64"
 
       - name: Print result
         run: |
-          echo "Published ${{ env.IMAGE_REF }}:single"
+          echo "Created package ${{ env.IMAGE_REF }}"

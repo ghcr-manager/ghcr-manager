@@ -32,6 +32,54 @@ run-name: Test Scenario Executor (${{ inputs.scenario }} / ${{ inputs.executor }
           - delete-orphaned-images-noop
           - wildcard-tagged-fully-deletable
           - regex-untag-only-single-shared-root
+          - graph-1image-base
+          - graph-1image-base--delete-image-a
+          - graph-1image-attestations
+          - graph-1image-attestations--delete-image-a
+          - graph-1image-cosign
+          - graph-1image-cosign--delete-image-a
+          - graph-1image-cosign-attestations
+          - graph-1image-cosign-attestations--delete-image-a
+          - graph-2images-base
+          - graph-2images-base--delete-image-a
+          - graph-2images-base--delete-multiarch
+          - graph-2images-base--delete-image-a-and-multiarch
+          - graph-2images-attestations
+          - graph-2images-attestations--delete-image-a
+          - graph-2images-attestations--delete-multiarch
+          - graph-2images-attestations--delete-image-a-and-multiarch
+          - graph-2images-cosign
+          - graph-2images-cosign--delete-image-a
+          - graph-2images-cosign--delete-multiarch
+          - graph-2images-cosign--delete-image-a-and-multiarch
+          - graph-2images-cosign-attestations
+          - graph-2images-cosign-attestations--delete-image-a
+          - graph-2images-cosign-attestations--delete-multiarch
+          - graph-2images-cosign-attestations--delete-image-a-and-multiarch
+          - graph-2multiarch-base
+          - graph-2multiarch-base--delete-image-a
+          - graph-2multiarch-base--delete-multiarch-a
+          - graph-2multiarch-base--delete-image-a-and-multiarch-a
+          - graph-2multiarch-attestations
+          - graph-2multiarch-attestations--delete-image-a
+          - graph-2multiarch-attestations--delete-multiarch-a
+          - graph-2multiarch-attestations--delete-image-a-and-multiarch-a
+          - graph-2multiarch-cosign
+          - graph-2multiarch-cosign--delete-image-a
+          - graph-2multiarch-cosign--delete-multiarch-a
+          - graph-2multiarch-cosign--delete-image-a-and-multiarch-a
+          - graph-2multiarch-cosign-attestations
+          - graph-2multiarch-cosign-attestations--delete-image-a
+          - graph-2multiarch-cosign-attestations--delete-multiarch-a
+          - graph-2multiarch-cosign-attestations--delete-image-a-and-multiarch-a
+          - graph-2multiarch2tags-base
+          - graph-2multiarch2tags-base--delete-multiarch-a
+          - graph-2multiarch2tags-attestations
+          - graph-2multiarch2tags-attestations--delete-multiarch-a
+          - graph-2multiarch2tags-cosign
+          - graph-2multiarch2tags-cosign--delete-multiarch-a
+          - graph-2multiarch2tags-cosign-attestations
+          - graph-2multiarch2tags-cosign-attestations--delete-multiarch-a
       executor:
         description: Cleanup executor to run against the seeded scenario package.
         required: true
@@ -94,14 +142,14 @@ jobs:
       - name: Require test org configuration
         shell: bash
         env:
-          GHCR_TEST_OWNER: ${{ vars.GHCR_TEST_OWNER }}
-          GHCR_TEST_PAT_USERNAME: ${{ vars.GHCR_TEST_PAT_USERNAME }}
-          GHCR_TEST_PAT: ${{ secrets.GHCR_TEST_PAT }}
+          GH_TEST_ORG: ${{ vars.GH_TEST_ORG }}
+          GH_TEST_PAT_USERNAME: ${{ vars.GH_TEST_PAT_USERNAME }}
+          GH_TEST_PAT: ${{ secrets.GH_TEST_PAT }}
         run: |
           set -euo pipefail
-          [[ -n "$GHCR_TEST_OWNER" ]] || { echo "Missing repo variable GHCR_TEST_OWNER" >&2; exit 1; }
-          [[ -n "$GHCR_TEST_PAT_USERNAME" ]] || { echo "Missing repo variable GHCR_TEST_PAT_USERNAME" >&2; exit 1; }
-          [[ -n "$GHCR_TEST_PAT" ]] || { echo "Missing repo secret GHCR_TEST_PAT" >&2; exit 1; }
+          [[ -n "$GH_TEST_ORG" ]] || { echo "Missing repo variable GH_TEST_ORG" >&2; exit 1; }
+          [[ -n "$GH_TEST_PAT_USERNAME" ]] || { echo "Missing repo variable GH_TEST_PAT_USERNAME" >&2; exit 1; }
+          [[ -n "$GH_TEST_PAT" ]] || { echo "Missing repo secret GH_TEST_PAT" >&2; exit 1; }
 
       - name: Resolve scenario
         id: scenario
@@ -112,7 +160,7 @@ jobs:
           REPOSITORY_NAME: ${{ github.event.repository.name }}
           RUNNER_TEMP: ${{ runner.temp }}
           SCENARIO: ${{ inputs.scenario }}
-          TEST_OWNER: ${{ vars.GHCR_TEST_OWNER }}
+          TEST_OWNER: ${{ vars.GH_TEST_ORG }}
         run: |
           set -euo pipefail
           work_dir="$RUNNER_TEMP/ghcr-manager/scenario-${SCENARIO}-${EXECUTOR}"
@@ -138,8 +186,8 @@ jobs:
       - name: Clear scenario package
         shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GHCR_TEST_PAT }}
-          OWNER: ${{ vars.GHCR_TEST_OWNER }}
+          GITHUB_TOKEN: ${{ secrets.GH_TEST_PAT }}
+          OWNER: ${{ vars.GH_TEST_ORG }}
           PACKAGE: ${{ steps.scenario.outputs.package_name }}
         run: |
           set -euo pipefail
@@ -150,8 +198,8 @@ jobs:
         with:
           image_ref: ${{ steps.scenario.outputs.image_ref }}
           seed_strategy: ${{ steps.scenario.outputs.seed_strategy }}
-          registry_username: ${{ vars.GHCR_TEST_PAT_USERNAME }}
-          registry_password: ${{ secrets.GHCR_TEST_PAT }}
+          registry_username: ${{ vars.GH_TEST_PAT_USERNAME }}
+          registry_password: ${{ secrets.GH_TEST_PAT }}
 
       - name: Set up Node.js for pre-scan
         if: ${{ inputs.executor == 'ghcr-cleanup-action' || steps.scenario.outputs.digest_selector_tag_name_key != '' }}
@@ -175,9 +223,9 @@ jobs:
           set -euo pipefail
           npm run ghcr-manager:dist -- scan \
             --db "${{ steps.scenario.outputs.db_path }}" \
-            --owner "${{ vars.GHCR_TEST_OWNER }}" \
+            --owner "${{ vars.GH_TEST_ORG }}" \
             --package "${{ steps.scenario.outputs.package_name }}" \
-            --token "${{ secrets.GHCR_TEST_PAT }}"
+            --token "${{ secrets.GH_TEST_PAT }}"
 
       - name: Prepare cleanup action inputs
         id: cleanup-inputs
@@ -225,8 +273,8 @@ jobs:
         uses: ./
         with:
           command: cleanup
-          token: ${{ secrets.GHCR_TEST_PAT }}
-          owner: ${{ vars.GHCR_TEST_OWNER }}
+          token: ${{ secrets.GH_TEST_PAT }}
+          owner: ${{ vars.GH_TEST_ORG }}
           package: ${{ steps.scenario.outputs.package_name }}
           db-path: ${{ steps.scenario.outputs.db_path }}
           upload-artifacts: ${{ inputs.upload_artifacts }}
@@ -253,10 +301,10 @@ jobs:
 
       - name: Execute with ghcr-cleanup-action action
         if: ${{ inputs.executor == 'ghcr-cleanup-action' }}
-        uses: dataaxiom/ghcr-cleanup-action@374e2028c8fb93b7219f3771cd405fab95d3dec4 # main
+        uses: dataaxiom/ghcr-cleanup-action@f092b48ba3b604b2a83690dc4b2bbb3392e1045f # main
         with:
-          token: ${{ secrets.GHCR_TEST_PAT }}
-          owner: ${{ vars.GHCR_TEST_OWNER }}
+          token: ${{ secrets.GH_TEST_PAT }}
+          owner: ${{ vars.GH_TEST_ORG }}
           package: ${{ steps.scenario.outputs.package_name }}
           delete-untagged: ${{ steps.cleanup-inputs.outputs.delete_untagged }}
           delete-tags: ${{ steps.cleanup-inputs.outputs.delete_tags }}
@@ -282,8 +330,8 @@ jobs:
         uses: ./
         with:
           command: scan
-          token: ${{ secrets.GHCR_TEST_PAT }}
-          owner: ${{ vars.GHCR_TEST_OWNER }}
+          token: ${{ secrets.GH_TEST_PAT }}
+          owner: ${{ vars.GH_TEST_ORG }}
           package: ${{ steps.scenario.outputs.package_name }}
           db-path: ${{ steps.scenario.outputs.db_path }}
           upload-artifacts: ${{ inputs.upload_artifacts }}

@@ -2,6 +2,7 @@
 /* global process */
 
 import { scenarios } from "./test-scenarios/_definitions.mjs";
+import { resolveScenarioTagNames } from "./test-scenarios/_resolve-tag-names.mjs";
 
 const scenarioId = process.argv[2];
 const executor = process.argv[3];
@@ -20,9 +21,7 @@ if (!scenario.supportedExecutors.includes(executor)) {
   throw new Error(`scenario '${scenarioId}' does not support executor '${executor}'`);
 }
 
-const namespacedTags = Object.fromEntries(
-  Object.entries(scenario.tagNames ?? {}).map(([key, value]) => [key, `${scenario.id}--${value}`])
-);
+const resolvedTagNames = resolveScenarioTagNames(scenario);
 
 process.stdout.write(
   JSON.stringify({
@@ -31,10 +30,10 @@ process.stdout.write(
     packageName: `${repositoryName}-${scenario.packageSuffix}`,
     seedStrategy: scenario.seedStrategy,
     digestSelectorTagNameKey: scenario.digestSelectorTagNameKey ?? null,
-    tagNames: namespacedTags,
-    ghcrManagerArgs: scenario.ghcrManagerArgs.map((value) => _replaceTagTokens(value, namespacedTags)),
+    tagNames: resolvedTagNames,
+    ghcrManagerArgs: scenario.ghcrManagerArgs.map((value) => _replaceTagTokens(value, resolvedTagNames)),
     dataaxiomInputs: Object.fromEntries(
-      Object.entries(scenario.dataaxiomInputs).map(([key, value]) => [key, _replaceTagTokens(value, namespacedTags)])
+      Object.entries(scenario.dataaxiomInputs).map(([key, value]) => [key, _replaceTagTokens(value, resolvedTagNames)])
     )
   })
 );

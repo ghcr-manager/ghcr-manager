@@ -33,24 +33,24 @@ jobs:
       - name: Require user-owner test configuration
         shell: bash
         env:
-          GHCR_TEST_PAT_USERNAME: ${{ vars.GHCR_TEST_PAT_USERNAME }}
-          GHCR_TEST_PAT: ${{ secrets.GHCR_TEST_PAT }}
+          GH_TEST_PAT_USERNAME: ${{ vars.GH_TEST_PAT_USERNAME }}
+          GH_TEST_PAT: ${{ secrets.GH_TEST_PAT }}
         run: |
           set -euo pipefail
-          [[ -n "$GHCR_TEST_PAT_USERNAME" ]] || { echo "Missing repo variable GHCR_TEST_PAT_USERNAME" >&2; exit 1; }
-          [[ -n "$GHCR_TEST_PAT" ]] || { echo "Missing repo secret GHCR_TEST_PAT" >&2; exit 1; }
+          [[ -n "$GH_TEST_PAT_USERNAME" ]] || { echo "Missing repo variable GH_TEST_PAT_USERNAME" >&2; exit 1; }
+          [[ -n "$GH_TEST_PAT" ]] || { echo "Missing repo secret GH_TEST_PAT" >&2; exit 1; }
 
       - name: Resolve variables
         shell: bash
         env:
-          GHCR_TEST_PAT_USERNAME: ${{ vars.GHCR_TEST_PAT_USERNAME }}
+          GH_TEST_PAT_USERNAME: ${{ vars.GH_TEST_PAT_USERNAME }}
           RUNNER_TEMP: ${{ runner.temp }}
         run: |
           set -euo pipefail
           PACKAGE_NAME="${{ github.event.repository.name }}-user-owner-test"
           PACKAGE_NAME="${PACKAGE_NAME,,}"
-          IMAGE_REF="ghcr.io/${GHCR_TEST_PAT_USERNAME,,}/${PACKAGE_NAME}"
-          DB_PATH="$RUNNER_TEMP/${GHCR_TEST_PAT_USERNAME,,}__${PACKAGE_NAME}__user-owner.sqlite"
+          IMAGE_REF="ghcr.io/${GH_TEST_PAT_USERNAME,,}/${PACKAGE_NAME}"
+          DB_PATH="$RUNNER_TEMP/${GH_TEST_PAT_USERNAME,,}__${PACKAGE_NAME}__user-owner.sqlite"
           {
             echo "PACKAGE_NAME=$PACKAGE_NAME"
             echo "IMAGE_REF=$IMAGE_REF"
@@ -60,19 +60,19 @@ jobs:
       - name: Clear scenario package
         shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GHCR_TEST_PAT }}
-          OWNER: ${{ vars.GHCR_TEST_PAT_USERNAME }}
+          GITHUB_TOKEN: ${{ secrets.GH_TEST_PAT }}
+          OWNER: ${{ vars.GH_TEST_PAT_USERNAME }}
           PACKAGE: ${{ env.PACKAGE_NAME }}
         run: |
           set -euo pipefail
           node tools/tests/delete-ghcr-package.mjs "$OWNER" "$PACKAGE" "$GITHUB_TOKEN"
 
       - name: Log in to GHCR
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
           registry: ghcr.io
-          username: ${{ vars.GHCR_TEST_PAT_USERNAME }}
-          password: ${{ secrets.GHCR_TEST_PAT }}
+          username: ${{ vars.GH_TEST_PAT_USERNAME }}
+          password: ${{ secrets.GH_TEST_PAT }}
 
       - name: Seed two tagged images
         shell: bash
@@ -105,8 +105,8 @@ jobs:
         uses: ./
         with:
           command: cleanup
-          token: ${{ secrets.GHCR_TEST_PAT }}
-          owner: ${{ vars.GHCR_TEST_PAT_USERNAME }}
+          token: ${{ secrets.GH_TEST_PAT }}
+          owner: ${{ vars.GH_TEST_PAT_USERNAME }}
           package: ${{ env.PACKAGE_NAME }}
           db-path: ${{ env.DB_PATH }}
           upload-artifacts: ${{ inputs.upload_artifacts }}

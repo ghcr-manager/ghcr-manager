@@ -21,15 +21,13 @@ permissions:
   id-token: write
 
 env:
-  TEST_OWNER: ${{ vars.GHCR_TEST_OWNER }}
-  IMAGE_REF: ghcr.io/${{ vars.GHCR_TEST_OWNER }}/${{ github.event.repository.name }}-test--complex
+  PACKAGE: ${{ github.event.repository.name }}-test--complex
+  IMAGE_REF: ghcr.io/${{ vars.GH_TEST_ORG }}/${{ github.event.repository.name }}-test--complex
 
 jobs:
-  build_alpha_amd64:
-    name: Build image (alpha-amd64)
+  prepare-environment:
+    name: Verify environment
     runs-on: ubuntu-latest
-    outputs:
-      digest: ${{ steps.build.outputs.digest }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -37,14 +35,33 @@ jobs:
       - name: Require test org configuration
         shell: bash
         env:
-          GHCR_TEST_OWNER: ${{ vars.GHCR_TEST_OWNER }}
-          GHCR_TEST_PAT_USERNAME: ${{ vars.GHCR_TEST_PAT_USERNAME }}
-          GHCR_TEST_PAT: ${{ secrets.GHCR_TEST_PAT }}
+          GH_TEST_ORG: ${{ vars.GH_TEST_ORG }}
+          GH_TEST_PAT_USERNAME: ${{ vars.GH_TEST_PAT_USERNAME }}
+          GH_TEST_PAT: ${{ secrets.GH_TEST_PAT }}
         run: |
           set -euo pipefail
-          [[ -n "$GHCR_TEST_OWNER" ]] || { echo "Missing repo variable GHCR_TEST_OWNER" >&2; exit 1; }
-          [[ -n "$GHCR_TEST_PAT_USERNAME" ]] || { echo "Missing repo variable GHCR_TEST_PAT_USERNAME" >&2; exit 1; }
-          [[ -n "$GHCR_TEST_PAT" ]] || { echo "Missing repo secret GHCR_TEST_PAT" >&2; exit 1; }
+          [[ -n "$GH_TEST_ORG" ]] || { echo "Missing repo variable GH_TEST_ORG" >&2; exit 1; }
+          [[ -n "$GH_TEST_PAT_USERNAME" ]] || { echo "Missing repo variable GH_TEST_PAT_USERNAME" >&2; exit 1; }
+          [[ -n "$GH_TEST_PAT" ]] || { echo "Missing repo secret GH_TEST_PAT" >&2; exit 1; }
+
+      - name: Clear scenario package
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TEST_PAT }}
+          OWNER: ${{ vars.GH_TEST_ORG }}
+        run: |
+          set -euo pipefail
+          node tools/tests/delete-ghcr-package.mjs "$OWNER" "$PACKAGE" "$GITHUB_TOKEN"
+
+  build_alpha_amd64:
+    name: Build image (alpha-amd64)
+    runs-on: ubuntu-latest
+    needs: prepare-environment
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Build and test image
         id: build
@@ -53,29 +70,18 @@ jobs:
           image_ref: ${{ env.IMAGE_REF }}
           arch: amd64
           platform: linux/amd64
-          registry_username: ${{ vars.GHCR_TEST_PAT_USERNAME }}
-          registry_password: ${{ secrets.GHCR_TEST_PAT }}
+          registry_username: ${{ vars.GH_TEST_PAT_USERNAME }}
+          registry_password: ${{ secrets.GH_TEST_PAT }}
 
   build_alpha_arm64:
     name: Build image (alpha-arm64)
     runs-on: ubuntu-24.04-arm
+    needs: prepare-environment
     outputs:
       digest: ${{ steps.build.outputs.digest }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Require test org configuration
-        shell: bash
-        env:
-          GHCR_TEST_OWNER: ${{ vars.GHCR_TEST_OWNER }}
-          GHCR_TEST_PAT_USERNAME: ${{ vars.GHCR_TEST_PAT_USERNAME }}
-          GHCR_TEST_PAT: ${{ secrets.GHCR_TEST_PAT }}
-        run: |
-          set -euo pipefail
-          [[ -n "$GHCR_TEST_OWNER" ]] || { echo "Missing repo variable GHCR_TEST_OWNER" >&2; exit 1; }
-          [[ -n "$GHCR_TEST_PAT_USERNAME" ]] || { echo "Missing repo variable GHCR_TEST_PAT_USERNAME" >&2; exit 1; }
-          [[ -n "$GHCR_TEST_PAT" ]] || { echo "Missing repo secret GHCR_TEST_PAT" >&2; exit 1; }
 
       - name: Build and test image
         id: build
@@ -84,22 +90,23 @@ jobs:
           image_ref: ${{ env.IMAGE_REF }}
           arch: arm64
           platform: linux/arm64
-          registry_username: ${{ vars.GHCR_TEST_PAT_USERNAME }}
-          registry_password: ${{ secrets.GHCR_TEST_PAT }}
+          registry_username: ${{ vars.GH_TEST_PAT_USERNAME }}
+          registry_password: ${{ secrets.GH_TEST_PAT }}
 
   publish_alpha:
     name: Publish alpha multi-arch image
     needs:
+      - prepare-environment
       - build_alpha_amd64
       - build_alpha_arm64
     runs-on: ubuntu-latest
     steps:
       - name: Log in to GHCR
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
           registry: ghcr.io
-          username: ${{ vars.GHCR_TEST_PAT_USERNAME }}
-          password: ${{ secrets.GHCR_TEST_PAT }}
+          username: ${{ vars.GH_TEST_PAT_USERNAME }}
+          password: ${{ secrets.GH_TEST_PAT }}
 
       - name: Publish multi-arch image
         uses: gh-workflow/multiarch-image-publish@c5eac5dd8f7ed6b39fffc6e2c2242966b4917260 # 0.2.1
@@ -121,7 +128,9 @@ jobs:
 
   build_beta_amd64:
     name: Build image (beta-amd64)
-    needs: publish_alpha
+    needs:
+      - prepare-environment
+      - publish_alpha
     runs-on: ubuntu-latest
     outputs:
       digest: ${{ steps.build.outputs.digest }}
@@ -139,23 +148,24 @@ jobs:
           image_ref: ${{ env.IMAGE_REF }}
           arch: amd64
           platform: linux/amd64
-          registry_username: ${{ vars.GHCR_TEST_PAT_USERNAME }}
-          registry_password: ${{ secrets.GHCR_TEST_PAT }}
+          registry_username: ${{ vars.GH_TEST_PAT_USERNAME }}
+          registry_password: ${{ secrets.GH_TEST_PAT }}
 
   publish_beta:
     name: Publish beta multi-arch image
     needs:
+      - prepare-environment
       - build_alpha_arm64
       - publish_alpha
       - build_beta_amd64
     runs-on: ubuntu-latest
     steps:
       - name: Log in to GHCR
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
           registry: ghcr.io
-          username: ${{ vars.GHCR_TEST_PAT_USERNAME }}
-          password: ${{ secrets.GHCR_TEST_PAT }}
+          username: ${{ vars.GH_TEST_PAT_USERNAME }}
+          password: ${{ secrets.GH_TEST_PAT }}
 
       - name: Publish multi-arch image
         uses: gh-workflow/multiarch-image-publish@c5eac5dd8f7ed6b39fffc6e2c2242966b4917260 # 0.2.1
@@ -178,6 +188,7 @@ jobs:
   publish_gamma:
     name: Publish gamma multi-arch image
     needs:
+      - prepare-environment
       - build_alpha_arm64
       - build_beta_amd64
       - publish_beta
@@ -187,11 +198,11 @@ jobs:
         run: sleep 120
 
       - name: Log in to GHCR
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
           registry: ghcr.io
-          username: ${{ vars.GHCR_TEST_PAT_USERNAME }}
-          password: ${{ secrets.GHCR_TEST_PAT }}
+          username: ${{ vars.GH_TEST_PAT_USERNAME }}
+          password: ${{ secrets.GH_TEST_PAT }}
 
       - name: Publish multi-arch image
         uses: gh-workflow/multiarch-image-publish@c5eac5dd8f7ed6b39fffc6e2c2242966b4917260 # 0.2.1

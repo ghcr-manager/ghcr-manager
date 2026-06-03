@@ -55,3 +55,22 @@ runs:
         platforms: ${{ inputs.platform }}
         # Temporary image tag for build/test; final tags are published later.
         tags: ${{ inputs.image_ref }}:${{ github.run_id }}-${{ inputs.arch }}-test
+
+    - name: Split image ref
+      shell: bash
+      run: |
+        image_ref="${{ inputs.image_ref }}"   # ghcr.io/OWNER/PACKAGE
+        without_registry="${image_ref#ghcr.io/}"
+        owner="${without_registry%%/*}"
+        package="${without_registry#*/}"
+
+        echo "OWNER=$owner" >> "$GITHUB_ENV"
+        echo "PACKAGE=$package" >> "$GITHUB_ENV"
+
+    - name: Remove temporary tag on image
+      uses: ghcr-manager/ghcr-untag-action@0c32d681a3f68580cbcfebfcf126cbab8df872f8 # v1.0.4
+      with:
+        token: ${{ inputs.registry_password }}
+        owner: ${{ env.OWNER }}
+        package: ${{ env.PACKAGE }}
+        tags: ${{ github.run_id }}-${{ inputs.arch }}-test

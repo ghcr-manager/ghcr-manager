@@ -40,15 +40,15 @@ jobs:
         id: token
         shell: bash
         env:
-          GHCR_TEST_OWNER: ${{ vars.GHCR_TEST_OWNER }}
-          GHCR_TEST_PAT: ${{ secrets.GHCR_TEST_PAT }}
+          GH_TEST_ORG: ${{ vars.GH_TEST_ORG }}
+          GH_TEST_PAT: ${{ secrets.GH_TEST_PAT }}
           INPUT_OWNER: ${{ inputs.owner }}
         run: |
           set -euo pipefail
           token="${{ github.token }}"
-          if [[ -n "$GHCR_TEST_OWNER" && "$INPUT_OWNER" == "$GHCR_TEST_OWNER" ]]; then
-            [[ -n "$GHCR_TEST_PAT" ]] || { echo "Missing repo secret GHCR_TEST_PAT for private test-org scan" >&2; exit 1; }
-            token="$GHCR_TEST_PAT"
+          if [[ -n "$GH_TEST_ORG" && "$INPUT_OWNER" == "$GH_TEST_ORG" ]]; then
+            [[ -n "$GH_TEST_PAT" ]] || { echo "Missing repo secret GH_TEST_PAT for private test-org scan" >&2; exit 1; }
+            token="$GH_TEST_PAT"
           fi
           echo "token=$token" >> "$GITHUB_OUTPUT"
 

@@ -74,6 +74,18 @@ jobs:
     with:
       executors: ghcr-manager
 
+  test-scenario-graph-matrix:
+    needs: [verify-release-refs]
+    uses: ./.github/workflows/test_scenario-graph-matrix.yml
+    permissions:
+      contents: read
+      packages: write
+      actions: write
+      id-token: write
+    secrets: inherit
+    with:
+      executors: ghcr-manager
+
   test-user-owner-cleanup:
     needs: [verify-release-refs]
     uses: ./.github/workflows/test_user-owner-cleanup.yml
@@ -82,24 +94,11 @@ jobs:
       packages: write
     secrets: inherit
 
-  test-untag-matrix:
-    needs:
-      - test-scenario-executor-matrix
-      - test-user-owner-cleanup
-    uses: ./.github/workflows/test_untag-matrix.yml
-    permissions:
-      contents: read
-      packages: write
-      actions: write
-      id-token: write
-    secrets: inherit
-
   publish-npm:
     name: Publish npm package
     needs:
       - verify-release-refs
       - test-scenario-executor-matrix
-      - test-untag-matrix
       - test-user-owner-cleanup
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
@@ -116,6 +115,7 @@ jobs:
           node-version: "24"
           cache: npm
           registry-url: https://registry.npmjs.org
+          package-manager-cache: false
 
       - name: Install dependencies
         run: |
@@ -138,7 +138,6 @@ jobs:
     needs:
       - verify-release-refs
       - test-scenario-executor-matrix
-      - test-untag-matrix
       - test-user-owner-cleanup
       - publish-npm
     if: startsWith(github.ref, 'refs/tags/')

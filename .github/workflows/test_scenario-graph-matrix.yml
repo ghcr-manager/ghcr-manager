@@ -1,9 +1,18 @@
-name: "Test: Untag Matrix"
-run-name: Test Untag Matrix
+name: "Test: Scenario Graph Matrix"
+run-name: "Test Scenario Graph Matrix (executors: ${{ inputs.executors }})"
 
 "on":
   workflow_dispatch:
     inputs:
+      executors:
+        description: Which executor matrix rows to include in this run.
+        required: true
+        default: ghcr-manager
+        type: choice
+        options:
+          - all
+          - ghcr-manager
+          - ghcr-cleanup-action
       upload_artifacts:
         description: Upload the final rescan DB artifact from inside the action.
         required: false
@@ -16,6 +25,10 @@ run-name: Test Untag Matrix
         type: string
   workflow_call:
     inputs:
+      executors:
+        required: false
+        default: ghcr-manager
+        type: string
       upload_artifacts:
         required: false
         default: true
@@ -40,24 +53,32 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Render untag matrix
+      - name: Render graph scenario matrix
         id: matrix
+        env:
+          EXECUTORS: ${{ inputs.executors }}
         shell: bash
         run: |
           set -euo pipefail
-          echo "matrix=$(node tools/tests/render-test-untag-matrix.mjs)" >> "$GITHUB_OUTPUT"
+          matrix_json="$(node tools/tests/render-graph-scenario-matrix.mjs)"
+          if [[ "$EXECUTORS" != "all" ]]; then
+            matrix_json="$(jq -c --arg executor "$EXECUTORS" '.include |= map(select(.executor == $executor))' <<< "$matrix_json")"
+          fi
+          echo "matrix=$matrix_json" >> "$GITHUB_OUTPUT"
 
   execute:
     needs: prepare
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
-    uses: ./.github/workflows/test_untag.yml
+    uses: ./.github/workflows/test_scenario-executor.yml
     secrets: inherit
     with:
       scenario: ${{ matrix.scenario }}
+      executor: ${{ matrix.executor }}
       upload_artifacts: ${{ inputs.upload_artifacts }}
       artifact_retention_days: ${{ inputs.artifact_retention_days }}
+      package_name_suffix: ${{ matrix.executor }}
 
   bundle-db-artifacts:
     if: ${{ always() && inputs.upload_artifacts }}
@@ -70,12 +91,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Merge current-run untag DB artifacts
+      - name: Merge current-run graph scenario DB artifacts
         id: merge
         uses: ./merge-run-artifacts
         with:
           upload-artifacts: "true"
-          db-file: ghcr-manager-merged--scenario-matrix-untag.sqlite
+          db-file: ghcr-manager-merged--scenario-graph-matrix-cleanup.sqlite
           db-artifact-retention-days: ${{ inputs.artifact_retention_days }}
           delete-source-artifacts: "true"
           artifact-name-glob: "*.sqlite"

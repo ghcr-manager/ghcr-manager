@@ -4,6 +4,7 @@
 import assert from "node:assert/strict";
 import Database from "better-sqlite3";
 import { scenarios } from "./test-scenarios/_definitions.mjs";
+import { resolveScenarioTagNames } from "./test-scenarios/_resolve-tag-names.mjs";
 
 /**
  * @typedef {{
@@ -34,9 +35,7 @@ if (!cleanupAuditAssertions) {
   process.exit(0);
 }
 
-const tagNames = Object.fromEntries(
-  Object.entries(scenario.tagNames ?? {}).map(([key, value]) => [key, `${scenario.id}--${value}`])
-);
+const tagNames = resolveScenarioTagNames(scenario);
 const database = new Database(dbPath, { readonly: true });
 
 try {
