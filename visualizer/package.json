@@ -33,7 +33,7 @@
   },
   "dependencies": {
     "better-sqlite3": "^12.9.0",
-    "cytoscape": "^3.33.1"
+    "cytoscape": "^3.34.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
