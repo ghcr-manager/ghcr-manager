@@ -37,7 +37,7 @@ export const cleanupScenarios = {
     id: "digest-fully-deletable",
     packageSuffix: "scenario--digest-fully-deletable",
     seedStrategy: "digest-fully-deletable",
-    supportedExecutors: ["ghcr-manager"],
+    supportedExecutors: ["ghcr-manager", "ghcr-cleanup-action"],
     ghcrManagerArgs: ["--delete-tag", "{deleteTag}"],
     dataaxiomInputs: {},
     digestSelectorTagNameKey: "deleteTag",
