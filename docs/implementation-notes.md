@@ -181,6 +181,8 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
   - root npm scripts and Dependabot now include the visualizer workspace
   - owner, package, and scan selectors are now backed by DB-driven dropdown endpoints; tag lookup stays as free text for
     now because package tag sets can grow too large for a naive full dropdown
+  - when a package has multiple scans, the browser UI now defaults the primary scan dropdown to the second-latest scan
+    and the compare dropdown to the latest scan; single-scan packages default the primary scan to that lone scan
   - tag lookup now adds capped scan-scoped suggestions via a small prefix-search API and a datalist-backed text input,
     while still preserving plain text entry as the fallback for large tag sets
   - same owner/package/scan/center reloads now preserve prior node positions by digest and skip force relayout when the

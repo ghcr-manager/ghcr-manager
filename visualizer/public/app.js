@@ -557,8 +557,9 @@ function replaceScanOptions(scans, options = {}) {
   const scanValues = scans.map((scan) => String(scan.scanId));
   elements.scanId.disabled = scans.length === 0;
   elements.compareScanId.disabled = scans.length === 0;
-  elements.scanId.value = _pickInitialValue(selectedScanId, scanValues);
-  elements.compareScanId.value = _pickInitialValue(selectedCompareScanId, scanValues);
+  elements.scanId.value = _pickInitialValue(selectedScanId, scanValues) || _defaultScanId(scans);
+  elements.compareScanId.value =
+    _pickInitialValue(selectedCompareScanId, scanValues) || _defaultCompareScanId(scans, elements.scanId.value);
 }
 
 function buildOption(value, label) {
@@ -579,6 +580,27 @@ function formatScanLabel(scan) {
 
 function _pickInitialValue(currentValue, allowedValues) {
   return allowedValues.includes(currentValue) ? currentValue : "";
+}
+
+function _defaultScanId(scans) {
+  if (scans.length === 0) {
+    return "";
+  }
+
+  if (scans.length === 1) {
+    return String(scans[0].scanId);
+  }
+
+  return String(scans[1].scanId);
+}
+
+function _defaultCompareScanId(scans, selectedScanId) {
+  if (scans.length < 2) {
+    return "";
+  }
+
+  const newestScanId = String(scans[0].scanId);
+  return newestScanId === selectedScanId ? "" : newestScanId;
 }
 
 function buildGraphContext(graph) {
