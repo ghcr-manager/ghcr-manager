@@ -398,6 +398,54 @@ test("planner plan artifacts include reverse-linked untagged manifests connected
   );
 });
 
+test("planner plan artifacts ignore unrelated tagged manifests in different graphs", (t) => {
+  const harness = _createHarness("graph-prune");
+  t.after(() => harness.database.close());
+
+  _insertManifestVersion(harness.writer, 1, "sha256:selected-root", "2026-05-01T10:00:00.000Z");
+  _insertManifestVersion(harness.writer, 2, "sha256:selected-child", "2026-05-01T10:01:00.000Z", {
+    manifestKind: ManifestKinds.imageManifest,
+    mediaType: "application/vnd.oci.image.manifest.v1+json"
+  });
+  harness.writer.insertManifestEdge({
+    parentDigest: "sha256:selected-root",
+    childDigest: "sha256:selected-child",
+    edgeKind: "image-child"
+  });
+
+  _insertManifestVersion(harness.writer, 3, "sha256:other-root", "2026-05-01T10:02:00.000Z", { tag: "keep-me" });
+  _insertManifestVersion(harness.writer, 4, "sha256:other-child", "2026-05-01T10:03:00.000Z", {
+    manifestKind: ManifestKinds.imageManifest,
+    mediaType: "application/vnd.oci.image.manifest.v1+json"
+  });
+  harness.writer.insertManifestEdge({
+    parentDigest: "sha256:other-root",
+    childDigest: "sha256:other-child",
+    edgeKind: "image-child"
+  });
+
+  harness.writer.rebuildManifestReachability();
+
+  const directTargetRoots: DeletePlanRoot[] = [
+    {
+      versionId: 1,
+      digest: "sha256:selected-root",
+      manifestKind: ManifestKinds.multiArchManifest,
+      reason: "delete-untagged",
+      selectionMode: "delete-root"
+    }
+  ];
+  const artifacts = harness.artifacts.build(harness.scanId, directTargetRoots);
+
+  assert.deepEqual(artifacts.blockedRoots, []);
+  assert.deepEqual(artifacts.fullyDeletableRoots, directTargetRoots);
+  assert.deepEqual(artifacts.supportedUntagOnlyRootDigests, new Set());
+  assert.deepEqual(
+    artifacts.closureManifests.map((manifest) => manifest.memberDigest),
+    ["sha256:selected-root", "sha256:selected-child"]
+  );
+});
+
 test("planner plan artifacts support untag-only for cosign indexes whose direct payload children are retained", (t) => {
   const harness = _createHarness("cosign-retained-index");
   t.after(() => harness.database.close());

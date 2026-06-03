@@ -37,10 +37,23 @@ export class PlannerPlanArtifacts {
 
   #listSupportedUntagOnlyRootDigests(scanId: number) {
     const sql = `
-      WITH retained_tagged_manifests AS (
+      WITH selected_graphs AS (
+        SELECT DISTINCT
+          manifest_graphs.graph_id
+        FROM temp_direct_target_roots dtr
+        JOIN manifest_graphs
+          ON manifest_graphs.scan_id = ?
+         AND manifest_graphs.digest = dtr.root_digest
+      ),
+      retained_tagged_manifests AS (
         SELECT DISTINCT
           m.digest
         FROM manifests m
+        JOIN manifest_graphs
+          ON manifest_graphs.scan_id = m.scan_id
+         AND manifest_graphs.digest = m.digest
+        JOIN selected_graphs
+          ON selected_graphs.graph_id = manifest_graphs.graph_id
         JOIN tags t
           ON t.scan_id = m.scan_id
          AND t.version_id = m.version_id
@@ -118,6 +131,7 @@ export class PlannerPlanArtifacts {
       scanId,
       scanId,
       scanId,
+      scanId,
       scanId
     ]);
 
@@ -126,11 +140,24 @@ export class PlannerPlanArtifacts {
 
   #listClosureManifests(scanId: number) {
     const sql = `
-      WITH retained_tagged_manifests AS (
+      WITH selected_graphs AS (
+        SELECT DISTINCT
+          manifest_graphs.graph_id
+        FROM temp_direct_target_roots dtr
+        JOIN manifest_graphs
+          ON manifest_graphs.scan_id = ?
+         AND manifest_graphs.digest = dtr.root_digest
+      ),
+      retained_tagged_manifests AS (
         SELECT DISTINCT
           m.version_id,
           m.digest
         FROM manifests m
+        JOIN manifest_graphs
+          ON manifest_graphs.scan_id = m.scan_id
+         AND manifest_graphs.digest = m.digest
+        JOIN selected_graphs
+          ON selected_graphs.graph_id = manifest_graphs.graph_id
         JOIN tags t
           ON t.scan_id = m.scan_id
          AND t.version_id = m.version_id
@@ -209,6 +236,11 @@ export class PlannerPlanArtifacts {
           me.parent_digest AS source_digest,
           me.child_digest AS target_digest
         FROM manifest_edges me
+        JOIN manifest_graphs parent_graph
+          ON parent_graph.scan_id = me.scan_id
+         AND parent_graph.digest = me.parent_digest
+        JOIN selected_graphs
+          ON selected_graphs.graph_id = parent_graph.graph_id
         WHERE me.scan_id = ?
 
         UNION
@@ -217,6 +249,11 @@ export class PlannerPlanArtifacts {
           me.child_digest AS source_digest,
           me.parent_digest AS target_digest
         FROM manifest_edges me
+        JOIN manifest_graphs child_graph
+          ON child_graph.scan_id = me.scan_id
+         AND child_graph.digest = me.child_digest
+        JOIN selected_graphs
+          ON selected_graphs.graph_id = child_graph.graph_id
         WHERE me.scan_id = ?
       ),
       delete_component_members AS (
@@ -300,17 +337,30 @@ export class PlannerPlanArtifacts {
     return this.#sql
       .all<
         Parameters<typeof mapClosureManifestRow>[0]
-      >(sql, [scanId, scanId, scanId, scanId, scanId, scanId, scanId, scanId, scanId])
+      >(sql, [scanId, scanId, scanId, scanId, scanId, scanId, scanId, scanId, scanId, scanId])
       .map(mapClosureManifestRow);
   }
 
   #listBlockedRoots(scanId: number) {
     const sql = `
-      WITH retained_tagged_manifests AS (
+      WITH selected_graphs AS (
+        SELECT DISTINCT
+          manifest_graphs.graph_id
+        FROM temp_direct_target_roots dtr
+        JOIN manifest_graphs
+          ON manifest_graphs.scan_id = ?
+         AND manifest_graphs.digest = dtr.root_digest
+      ),
+      retained_tagged_manifests AS (
         SELECT
           m.version_id AS tagged_version_id,
           m.digest AS tagged_digest
         FROM manifests m
+        JOIN manifest_graphs
+          ON manifest_graphs.scan_id = m.scan_id
+         AND manifest_graphs.digest = m.digest
+        JOIN selected_graphs
+          ON selected_graphs.graph_id = manifest_graphs.graph_id
         JOIN tags t
           ON t.scan_id = m.scan_id
          AND t.version_id = m.version_id
@@ -357,7 +407,7 @@ export class PlannerPlanArtifacts {
       WHERE rn = 1
       ORDER BY blocked_digest, blocking_digest, overlap_digest
     `;
-    return this.#sql.all<Parameters<typeof mapBlockedRootRow>[0]>(sql, [scanId, scanId]).map(mapBlockedRootRow);
+    return this.#sql.all<Parameters<typeof mapBlockedRootRow>[0]>(sql, [scanId, scanId, scanId]).map(mapBlockedRootRow);
   }
 
   #withDirectTargetRootsTempTable<T>(directTargetRoots: DeletePlanRoot[], callback: () => T): T {

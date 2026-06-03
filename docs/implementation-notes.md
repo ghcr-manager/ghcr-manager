@@ -442,3 +442,5 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
     code uses it for anything
   - this is intentionally a cheap graph-membership helper (`scan_id + digest -> graph_id`), not a persisted all-pairs
     connectivity table
+  - planner artifact queries now use `selected_graphs` derived from the direct targets so retained-tag scope and the
+    undirected edge walk are limited to graphs that actually contain selected manifests
