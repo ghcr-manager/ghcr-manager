@@ -48,7 +48,8 @@ export class DbMergeScanCopy {
       "manifest_descriptors(scan_id, parent_digest, child_digest, media_type, artifact_type, platform_os, platform_architecture, platform_variant)",
       "manifest_payloads(scan_id, digest, raw_json)",
       "manifest_edges(scan_id, parent_digest, child_digest, edge_kind)",
-      "manifest_reachability(scan_id, ancestor_digest, descendant_digest, min_distance)"
+      "manifest_reachability(scan_id, ancestor_digest, descendant_digest, min_distance)",
+      "manifest_graphs(scan_id, digest, graph_id)"
     ] as const;
 
     for (const spec of copySpecs) {

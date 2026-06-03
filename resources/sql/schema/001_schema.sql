@@ -106,6 +106,15 @@ CREATE TABLE IF NOT EXISTS manifest_reachability (
   CHECK(min_distance >= 0)
 );
 
+CREATE TABLE IF NOT EXISTS manifest_graphs (
+  scan_id INTEGER NOT NULL,
+  digest TEXT NOT NULL,
+  graph_id INTEGER NOT NULL,
+  PRIMARY KEY(scan_id, digest),
+  FOREIGN KEY(scan_id, digest) REFERENCES manifests(scan_id, digest),
+  CHECK(graph_id > 0)
+);
+
 CREATE TABLE IF NOT EXISTS cleanup_runs (
   cleanup_run_id INTEGER PRIMARY KEY,
   scan_id INTEGER NOT NULL,
@@ -203,3 +212,5 @@ CREATE INDEX IF NOT EXISTS idx_manifest_reachability_scan_descendant
   ON manifest_reachability(scan_id, descendant_digest);
 CREATE INDEX IF NOT EXISTS idx_manifest_reachability_scan_descendant_distance
   ON manifest_reachability(scan_id, descendant_digest, min_distance);
+CREATE INDEX IF NOT EXISTS idx_manifest_graphs_scan_graph_id
+  ON manifest_graphs(scan_id, graph_id);

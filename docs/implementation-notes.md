@@ -436,3 +436,9 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
   - schema also adds `idx_manifest_edges_scan_child_kind` to cheapen remaining `has_ancestor` lookups
   - the large closure query no longer carries an intermediate text `member_role` label through early CTEs; it now uses
     hop data directly (`0` vs `> 0`) and derives the final role string only in the final projection
+- Manifest graph note:
+  - scans now also persist one undirected `graph_id` per manifest in `manifest_graphs`
+  - `graph_id` is computed from `manifest_edges` during the existing post-edge graph-processing phase, before planner
+    code uses it for anything
+  - this is intentionally a cheap graph-membership helper (`scan_id + digest -> graph_id`), not a persisted all-pairs
+    connectivity table
