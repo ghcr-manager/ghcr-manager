@@ -235,26 +235,26 @@ export class PlannerPlanArtifacts {
         SELECT
           me.parent_digest AS source_digest,
           me.child_digest AS target_digest
-        FROM manifest_edges me
-        JOIN manifest_graphs parent_graph
-          ON parent_graph.scan_id = me.scan_id
-         AND parent_graph.digest = me.parent_digest
-        JOIN selected_graphs
-          ON selected_graphs.graph_id = parent_graph.graph_id
-        WHERE me.scan_id = ?
+        FROM selected_graphs
+        CROSS JOIN manifest_graphs parent_graph
+        CROSS JOIN manifest_edges me INDEXED BY idx_manifest_edges_scan_parent
+        WHERE parent_graph.scan_id = me.scan_id
+          AND selected_graphs.graph_id = parent_graph.graph_id
+          AND parent_graph.digest = me.parent_digest
+          AND me.scan_id = ?
 
         UNION
 
         SELECT
           me.child_digest AS source_digest,
           me.parent_digest AS target_digest
-        FROM manifest_edges me
-        JOIN manifest_graphs child_graph
-          ON child_graph.scan_id = me.scan_id
-         AND child_graph.digest = me.child_digest
-        JOIN selected_graphs
-          ON selected_graphs.graph_id = child_graph.graph_id
-        WHERE me.scan_id = ?
+        FROM selected_graphs
+        CROSS JOIN manifest_graphs child_graph
+        CROSS JOIN manifest_edges me INDEXED BY idx_manifest_edges_scan_child
+        WHERE child_graph.scan_id = me.scan_id
+          AND selected_graphs.graph_id = child_graph.graph_id
+          AND child_graph.digest = me.child_digest
+          AND me.scan_id = ?
       ),
       delete_component_members AS (
         SELECT
