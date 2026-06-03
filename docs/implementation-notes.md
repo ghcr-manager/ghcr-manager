@@ -8,6 +8,22 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
 
 - Developer glossary: [docs/terminology.md](terminology.md)
 
+## Current Checklist
+
+- [x] Simplify orphaned digest-tag resolution in `src/cli/_tag-selector-resolver.ts` to use a direct latest-scan query
+      with `NOT EXISTS` instead of the dummy cartesian join plus nullable parent join
+- [x] Split large SQL bodies out of `src/db/planner/_planner-plan-artifacts.ts` into private sibling modules so the main
+      planner artifact builder stays small and wiring-focused
+- [x] Add mirrored tests for the new planner SQL modules and rerun targeted resolver/planner tests plus
+      `npm run typecheck`
+- [ ] Decide separately whether to clean up the pre-existing markdownlint failure in `docs/ai/tasks/07/Review_Notes.md`
+      or leave task-note docs outside the normal lint path
+
+## Current Next Plan
+
+- If desired, fix or explicitly exempt the markdownlint failure in `docs/ai/tasks/07/Review_Notes.md` so
+  `./scripts/lint.sh` can pass end-to-end again.
+
 ## Current Status
 
 - Runtime: Node.js and TypeScript.
@@ -144,6 +160,15 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
     - combined-path internals are further split so the main combined file now only wires together:
       - tag-filter SQL snippets from `_planner-direct-target-root-tag-filters.ts`
       - the combined tagged/untagged SQL blob from `_planner-direct-target-roots-combined-sql.ts`
+  - `src/db/planner/_planner-plan-artifacts.ts` is now kept as the small orchestration class while its three large SQL
+    statements live in private sibling modules:
+    - `_planner-plan-artifacts-closure-sql.ts`
+    - `_planner-plan-artifacts-blocked-roots-sql.ts`
+    - `_planner-plan-artifacts-supported-untag-only-sql.ts`
+- Orphaned digest-tag resolver note:
+  - `_listLatestOrphanedTags()` no longer uses `JOIN digest_tag_artifacts dta ON 1 = 1`
+  - it now derives digest-tag candidates from the latest scan and classifies orphaned tags with one `NOT EXISTS` probe
+    against `manifests` for the derived parent digest in the same scan
 - Coverage note:
   - CLI dispatch, cleanup-summary Markdown branches, and planner repository wrapper methods now have explicit tests so
     post-refactor line coverage reflects the live surface more closely

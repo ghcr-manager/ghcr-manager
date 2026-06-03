@@ -141,6 +141,7 @@ function _listLatestOrphanedTags(
         digest_tag_artifacts AS (
           SELECT
             t.tag,
+            t.scan_id,
             t.version_id AS artifact_version_id,
             'sha256:' || SUBSTR(t.tag, 8, 64) AS parent_digest
           FROM latest_scan ls
@@ -149,16 +150,16 @@ function _listLatestOrphanedTags(
           WHERE t.is_digest_tag = 1
         )
         SELECT DISTINCT dta.tag
-        FROM latest_scan ls
-        JOIN digest_tag_artifacts dta
-          ON 1 = 1
+        FROM digest_tag_artifacts dta
         JOIN package_versions pv
-          ON pv.scan_id = ls.scan_id
+          ON pv.scan_id = dta.scan_id
          AND pv.version_id = dta.artifact_version_id
-        LEFT JOIN manifests parent
-          ON parent.scan_id = ls.scan_id
-         AND parent.digest = dta.parent_digest
-        WHERE parent.digest IS NULL
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM manifests parent
+            WHERE parent.scan_id = dta.scan_id
+              AND parent.digest = dta.parent_digest
+          )
           AND (? IS NULL OR pv.created_at < ?)
         ORDER BY dta.tag
       `
