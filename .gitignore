@@ -5,3 +5,4 @@ dist/
 /coverage/
 # temp ignore
 /docs/visualizer
+docs/ai/tasks/07/*.log
