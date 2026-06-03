@@ -169,8 +169,7 @@ export class PlannerPlanArtifacts {
           dtr.root_version_id AS member_version_id,
           dtr.root_digest AS member_digest,
           dtr.root_manifest_kind AS member_manifest_kind,
-          0 AS hops_from_root,
-          'root' AS member_role
+          0 AS hops_from_root
         FROM temp_direct_target_roots dtr
 
         UNION ALL
@@ -181,8 +180,7 @@ export class PlannerPlanArtifacts {
           m.version_id AS member_version_id,
           m.digest AS member_digest,
           m.manifest_kind AS member_manifest_kind,
-          mr.min_distance AS hops_from_root,
-          'descendant' AS member_role
+          mr.min_distance AS hops_from_root
         FROM temp_direct_target_roots dtr
         JOIN manifest_reachability mr
           ON mr.scan_id = ?
@@ -197,10 +195,9 @@ export class PlannerPlanArtifacts {
           dtc.source_version_id,
           dtc.source_digest,
           dtc.member_digest,
-          dtc.hops_from_root,
-          dtc.member_role
+          dtc.hops_from_root
         FROM direct_target_closure dtc
-        WHERE dtc.member_role = 'root'
+        WHERE dtc.hops_from_root = 0
            OR NOT EXISTS (
              SELECT 1
              FROM retained_manifests retained
@@ -260,7 +257,7 @@ export class PlannerPlanArtifacts {
           dtc.member_digest,
           MIN(dtc.hops_from_root) AS min_hops_from_root
         FROM direct_target_closure dtc
-        WHERE dtc.member_role = 'descendant'
+        WHERE dtc.hops_from_root > 0
         GROUP BY dtc.source_digest, dtc.member_digest
       )
       SELECT

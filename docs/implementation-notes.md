@@ -434,3 +434,5 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
   - pure tagged-selector root planning now bypasses `v_scan_root_manifests` and uses a tagged-only query path
   - that avoids paying `has_ancestor` / untagged-root overhead for large delete-tag-only dry-runs
   - schema also adds `idx_manifest_edges_scan_child_kind` to cheapen remaining `has_ancestor` lookups
+  - the large closure query no longer carries an intermediate text `member_role` label through early CTEs; it now uses
+    hop data directly (`0` vs `> 0`) and derives the final role string only in the final projection
