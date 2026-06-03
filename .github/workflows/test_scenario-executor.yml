@@ -33,17 +33,53 @@ run-name: Test Scenario Executor (${{ inputs.scenario }} / ${{ inputs.executor }
           - wildcard-tagged-fully-deletable
           - regex-untag-only-single-shared-root
           - graph-1image-base
+          - graph-1image-base--delete-image-a
           - graph-1image-attestations
+          - graph-1image-attestations--delete-image-a
           - graph-1image-cosign
+          - graph-1image-cosign--delete-image-a
           - graph-1image-cosign-attestations
+          - graph-1image-cosign-attestations--delete-image-a
           - graph-2images-base
+          - graph-2images-base--delete-image-a
+          - graph-2images-base--delete-multiarch
+          - graph-2images-base--delete-image-a-and-multiarch
           - graph-2images-attestations
+          - graph-2images-attestations--delete-image-a
+          - graph-2images-attestations--delete-multiarch
+          - graph-2images-attestations--delete-image-a-and-multiarch
           - graph-2images-cosign
+          - graph-2images-cosign--delete-image-a
+          - graph-2images-cosign--delete-multiarch
+          - graph-2images-cosign--delete-image-a-and-multiarch
           - graph-2images-cosign-attestations
+          - graph-2images-cosign-attestations--delete-image-a
+          - graph-2images-cosign-attestations--delete-multiarch
+          - graph-2images-cosign-attestations--delete-image-a-and-multiarch
           - graph-2multiarch-base
+          - graph-2multiarch-base--delete-image-a
+          - graph-2multiarch-base--delete-multiarch-a
+          - graph-2multiarch-base--delete-image-a-and-multiarch-a
           - graph-2multiarch-attestations
+          - graph-2multiarch-attestations--delete-image-a
+          - graph-2multiarch-attestations--delete-multiarch-a
+          - graph-2multiarch-attestations--delete-image-a-and-multiarch-a
           - graph-2multiarch-cosign
+          - graph-2multiarch-cosign--delete-image-a
+          - graph-2multiarch-cosign--delete-multiarch-a
+          - graph-2multiarch-cosign--delete-image-a-and-multiarch-a
           - graph-2multiarch-cosign-attestations
+          - graph-2multiarch-cosign-attestations--delete-image-a
+          - graph-2multiarch-cosign-attestations--delete-multiarch-a
+          - graph-2multiarch-cosign-attestations--delete-image-a-and-multiarch-a
+          - graph-2multiarch2tags-base
+          - graph-2multiarch2tags-base--delete-multiarch-a
+          - graph-2multiarch2tags-attestations
+          - graph-2multiarch2tags-attestations--delete-multiarch-a
+          - graph-2multiarch2tags-cosign
+          - graph-2multiarch2tags-cosign--delete-multiarch-a
+          - graph-2multiarch2tags-cosign-attestations
+          - graph-2multiarch2tags-cosign-attestations--delete-multiarch-a
       executor:
         description: Cleanup executor to run against the seeded scenario package.
         required: true
