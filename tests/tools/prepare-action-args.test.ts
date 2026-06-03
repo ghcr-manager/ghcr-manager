@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-const { buildCleanupArgs, buildUntagArgs, writeArgsFile, writeGitHubOutputs } = await import(
+const { buildCleanupArgs, writeArgsFile, writeGitHubOutputs } = await import(
   new URL("../../tools/prepare-action-args.mjs", import.meta.url).href
 );
 
@@ -57,37 +57,6 @@ test("buildCleanupArgs assembles cleanup argv from action env", () => {
     "keep",
     "--exclude-tag",
     "keep-two"
-  ]);
-});
-
-test("buildUntagArgs assembles untag argv from action env", () => {
-  const invocation = buildUntagArgs({
-    DELETE_TAGS: " latest \nold ",
-    DRY_RUN: "true",
-    LOG_LEVEL: "info",
-    OWNER: "acme",
-    PACKAGE: "example",
-    SUMMARY_PATH: "/tmp/untag-summary.json",
-    TOKEN: "secret"
-  });
-
-  assert.equal(invocation.summaryPath, "/tmp/untag-summary.json");
-  assert.deepEqual(invocation.args, [
-    "--log-level",
-    "info",
-    "--owner",
-    "acme",
-    "--package",
-    "example",
-    "--summary-json-path",
-    "/tmp/untag-summary.json",
-    "--token",
-    "secret",
-    "--dry-run",
-    "--tag",
-    "latest",
-    "--tag",
-    "old"
   ]);
 });
 

@@ -4,9 +4,8 @@ import { untagRootTags } from "../../src/execute/index.js";
 
 test("untagRootTags retargets tags and deletes the temporary package versions", async () => {
   const calls: Array<{ url: string; method?: string; body?: string }> = [];
-  let latestVisible = true;
 
-  const operations = await untagRootTags("acme", "example", 101, "sha256:source", ["latest"], {
+  const detachedTagCount = await untagRootTags("acme", "example", 101, "sha256:source", ["latest"], {
     token: "test-token",
     logger: {
       debug() {},
@@ -68,16 +67,6 @@ test("untagRootTags retargets tags and deletes the temporary package versions", 
         };
       }
       if (url === "https://api.github.com/orgs/acme/packages/container/example/versions?per_page=100&page=1") {
-        if (!latestVisible) {
-          return {
-            ok: true,
-            status: 200,
-            headers: new Headers({ "content-type": "application/json" }),
-            async json() {
-              return [];
-            }
-          };
-        }
         const detachedDigest = calls.find(
           (call) => call.url === "https://ghcr.io/v2/acme/example/manifests/latest"
         )?.body;
@@ -112,7 +101,6 @@ test("untagRootTags retargets tags and deletes the temporary package versions", 
         };
       }
       if (url === "https://api.github.com/orgs/acme/packages/container/example/versions/202") {
-        latestVisible = false;
         return {
           ok: true,
           status: 204,
@@ -127,16 +115,7 @@ test("untagRootTags retargets tags and deletes the temporary package versions", 
     }
   });
 
-  assert.deepEqual(operations, [
-    {
-      tag: "latest",
-      sourceVersionId: 101,
-      sourceDigest: "sha256:source",
-      detachedVersionId: 202,
-      detachedDigest: operations[0]?.detachedDigest
-    }
-  ]);
-  assert.match(operations[0].detachedDigest, /^sha256:[a-f0-9]{64}$/);
+  assert.equal(detachedTagCount, 1);
 });
 
 async function _sha256(value: string): Promise<string> {

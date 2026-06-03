@@ -159,6 +159,9 @@ test("planner repository logs raw SQL statements and params at trace level", asy
   assert.ok(
     traceMessages.some((message) => message.includes("SELECT scan_id, owner, package_name, scan_completed_at"))
   );
+  assert.ok(
+    debugMessages.some((message) => message.includes("SELECT scan_id, owner, package_name, scan_completed_at"))
+  );
   assert.ok(traceMessages.some((message) => message.includes('PARAMS: ["acme","example"]')));
   assert.ok(debugMessages.some((message) => message.includes("SQL returned")));
 
@@ -181,7 +184,7 @@ test("planner repository carries delete-ghost-images planner metadata through ta
   writer.insertManifest({
     versionId: 201,
     digest: "sha256:ghost-index",
-    manifestKind: ManifestKinds.crossArchManifest,
+    manifestKind: ManifestKinds.multiArchManifest,
     mediaType: "application/vnd.oci.image.index.v1+json"
   });
   writer.insertTag({
@@ -214,7 +217,7 @@ test("planner repository carries delete-ghost-images planner metadata through ta
     {
       versionId: 201,
       digest: "sha256:ghost-index",
-      manifestKind: ManifestKinds.crossArchManifest,
+      manifestKind: ManifestKinds.multiArchManifest,
       reason: "delete-tags-all-tags-selected",
       selectionMode: "delete-root"
     }
@@ -240,7 +243,7 @@ test("planner repository carries delete-partial-images planner metadata through 
   writer.insertManifest({
     versionId: 201,
     digest: "sha256:partial-index",
-    manifestKind: ManifestKinds.crossArchManifest,
+    manifestKind: ManifestKinds.multiArchManifest,
     mediaType: "application/vnd.oci.image.index.v1+json"
   });
   writer.insertTag({
@@ -284,7 +287,7 @@ test("planner repository carries delete-partial-images planner metadata through 
     {
       versionId: 201,
       digest: "sha256:partial-index",
-      manifestKind: ManifestKinds.crossArchManifest,
+      manifestKind: ManifestKinds.multiArchManifest,
       reason: "delete-tags-all-tags-selected",
       selectionMode: "delete-root"
     }

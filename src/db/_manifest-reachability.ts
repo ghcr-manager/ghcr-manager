@@ -14,16 +14,22 @@ export function rebuildManifestReachability(database: Database.Database, scanId:
   const manifestDigests = _loadManifestDigests(database, scanId);
   const childDigestsByParent = new Map<string, Set<string>>();
   const parentDigestsByChild = new Map<string, Set<string>>();
+  const neighborDigestsByDigest = new Map<string, Set<string>>();
 
   for (const digest of manifestDigests) {
     childDigestsByParent.set(digest, new Set());
     parentDigestsByChild.set(digest, new Set());
+    neighborDigestsByDigest.set(digest, new Set());
   }
 
   for (const manifestEdge of _loadManifestEdges(database, scanId)) {
     childDigestsByParent.get(manifestEdge.parent_digest)?.add(manifestEdge.child_digest);
     parentDigestsByChild.get(manifestEdge.child_digest)?.add(manifestEdge.parent_digest);
+    neighborDigestsByDigest.get(manifestEdge.parent_digest)?.add(manifestEdge.child_digest);
+    neighborDigestsByDigest.get(manifestEdge.child_digest)?.add(manifestEdge.parent_digest);
   }
+
+  const graphIdsByDigest = _buildGraphIdsByDigest(manifestDigests, neighborDigestsByDigest);
 
   const remainingChildrenCount = new Map<string, number>();
   const descendantDistancesByDigest = new Map<string, Map<string, number>>();
@@ -86,11 +92,24 @@ export function rebuildManifestReachability(database: Database.Database, scanId:
       VALUES(?, ?, ?, ?)
     `
   );
+  const insertGraphRow = database.prepare(
+    `
+      INSERT OR REPLACE INTO manifest_graphs(
+        scan_id,
+        digest,
+        graph_id
+      )
+      VALUES(?, ?, ?)
+    `
+  );
 
   const rebuild = database.transaction(() => {
     database.prepare("DELETE FROM manifest_reachability WHERE scan_id = ?").run(scanId);
+    database.prepare("DELETE FROM manifest_graphs WHERE scan_id = ?").run(scanId);
 
     for (const digest of manifestDigests) {
+      insertGraphRow.run(scanId, digest, graphIdsByDigest.get(digest));
+
       for (const [descendantDigest, distance] of descendantDistancesByDigest.get(digest) ?? []) {
         insertRow.run(scanId, digest, descendantDigest, distance);
       }
@@ -98,6 +117,43 @@ export function rebuildManifestReachability(database: Database.Database, scanId:
   });
 
   rebuild();
+}
+
+function _buildGraphIdsByDigest(
+  manifestDigests: string[],
+  neighborDigestsByDigest: Map<string, Set<string>>
+): Map<string, number> {
+  const graphIdsByDigest = new Map<string, number>();
+  let nextGraphId = 1;
+
+  for (const rootDigest of manifestDigests) {
+    if (graphIdsByDigest.has(rootDigest)) {
+      continue;
+    }
+
+    const pendingDigests = [rootDigest];
+    graphIdsByDigest.set(rootDigest, nextGraphId);
+
+    while (pendingDigests.length > 0) {
+      const digest = pendingDigests.pop();
+      if (!digest) {
+        continue;
+      }
+
+      for (const neighborDigest of neighborDigestsByDigest.get(digest) ?? []) {
+        if (graphIdsByDigest.has(neighborDigest)) {
+          continue;
+        }
+
+        graphIdsByDigest.set(neighborDigest, nextGraphId);
+        pendingDigests.push(neighborDigest);
+      }
+    }
+
+    nextGraphId += 1;
+  }
+
+  return graphIdsByDigest;
 }
 
 function _refreshDigestTagEdges(database: Database.Database, scanId: number): void {
@@ -109,20 +165,18 @@ function _refreshDigestTagEdges(database: Database.Database, scanId: number): vo
         INSERT OR IGNORE INTO manifest_edges(scan_id, parent_digest, child_digest, edge_kind)
         SELECT
           t.scan_id,
-          'sha256:' || SUBSTR(t.tag, 8, 64) AS parent_digest,
-          m.digest AS child_digest,
+          m.digest AS parent_digest,
+          'sha256:' || SUBSTR(t.tag, 8, 64) AS child_digest,
           'digest-tag-referrer' AS edge_kind
         FROM tags t
         JOIN manifests m
           ON m.scan_id = t.scan_id
          AND m.version_id = t.version_id
-        JOIN manifests parent_manifest
-          ON parent_manifest.scan_id = t.scan_id
-         AND parent_manifest.digest = 'sha256:' || SUBSTR(t.tag, 8, 64)
+        JOIN manifests child_manifest
+          ON child_manifest.scan_id = t.scan_id
+         AND child_manifest.digest = 'sha256:' || SUBSTR(t.tag, 8, 64)
         WHERE t.scan_id = ?
-          AND t.tag LIKE 'sha256-%'
-          AND LENGTH(t.tag) >= 71
-          AND SUBSTR(t.tag, 8, 64) NOT GLOB '*[^0-9A-Fa-f]*'
+          AND t.is_digest_tag = 1
       `
     )
     .run(scanId);

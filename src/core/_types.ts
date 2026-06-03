@@ -1,6 +1,6 @@
 export const ManifestKinds = {
   indexManifest: "index_manifest",
-  crossArchManifest: "cross_arch_manifest",
+  multiArchManifest: "multi_arch_manifest",
   imageManifest: "image_manifest",
   artifactManifest: "artifact_manifest",
   attestationManifest: "attestation_manifest",
@@ -32,11 +32,6 @@ export interface ManifestRecord {
   subjectDigest?: string;
   annotations?: Record<string, unknown>;
   manifestKind?: ManifestKind;
-  platform?: {
-    architecture?: string;
-    os?: string;
-    variant?: string;
-  };
 }
 
 export interface ManifestDescriptorRecord {

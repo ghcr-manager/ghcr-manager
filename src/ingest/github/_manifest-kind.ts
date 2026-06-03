@@ -9,6 +9,12 @@ interface _RegistryManifestDocument {
   mediaType?: string;
   artifactType?: string;
   annotations?: Record<string, unknown>;
+  manifests?: Array<{
+    platform?: {
+      architecture?: string;
+      os?: string;
+    };
+  }>;
   config?: {
     mediaType?: string;
     artifactType?: string;
@@ -24,7 +30,7 @@ export function classifyManifestKind(document: _RegistryManifestDocument): Manif
     document.mediaType === "application/vnd.oci.image.index.v1+json" ||
     document.mediaType === "application/vnd.docker.distribution.manifest.list.v2+json"
   ) {
-    return ManifestKinds.indexManifest;
+    return _isMultiArchManifest(document) ? ManifestKinds.multiArchManifest : ManifestKinds.indexManifest;
   }
 
   if (_isSignatureManifest(document)) {
@@ -35,7 +41,10 @@ export function classifyManifestKind(document: _RegistryManifestDocument): Manif
     return ManifestKinds.attestationManifest;
   }
 
-  if (document.mediaType === "application/vnd.oci.image.manifest.v1+json") {
+  if (
+    document.mediaType === "application/vnd.oci.image.manifest.v1+json" ||
+    document.mediaType === "application/vnd.docker.distribution.manifest.v2+json"
+  ) {
     return ManifestKinds.imageManifest;
   }
 
@@ -44,6 +53,24 @@ export function classifyManifestKind(document: _RegistryManifestDocument): Manif
   }
 
   return undefined;
+}
+
+function _isMultiArchManifest(document: _RegistryManifestDocument): boolean {
+  const realPlatformDescriptorCount =
+    document.manifests?.filter((descriptor) => {
+      const architecture = descriptor.platform?.architecture;
+      const os = descriptor.platform?.os;
+      return (
+        typeof architecture === "string" &&
+        typeof os === "string" &&
+        architecture.length > 0 &&
+        os.length > 0 &&
+        architecture !== "unknown" &&
+        os !== "unknown"
+      );
+    }).length ?? 0;
+
+  return realPlatformDescriptorCount > 1;
 }
 
 function _isSignatureManifest(document: _RegistryManifestDocument): boolean {

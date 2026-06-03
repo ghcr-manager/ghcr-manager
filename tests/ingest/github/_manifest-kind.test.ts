@@ -3,23 +3,62 @@ import test from "node:test";
 import { ManifestKinds } from "../../../src/core/index.js";
 import { classifyManifestKind } from "../../../src/ingest/github/_manifest-kind.js";
 
-test("classifyManifestKind identifies image indexes", () => {
+test("classifyManifestKind identifies single-platform image indexes as generic indexes", () => {
   assert.equal(
-    classifyManifestKind({ mediaType: "application/vnd.oci.image.index.v1+json" }),
+    classifyManifestKind({
+      mediaType: "application/vnd.oci.image.index.v1+json",
+      manifests: [
+        {
+          platform: {
+            os: "linux",
+            architecture: "amd64"
+          }
+        },
+        {
+          platform: {
+            os: "unknown",
+            architecture: "unknown"
+          }
+        }
+      ]
+    }),
     ManifestKinds.indexManifest
   );
 });
 
-test("classifyManifestKind identifies docker manifest lists as image indexes", () => {
+test("classifyManifestKind identifies multi-platform indexes as multi-arch manifests", () => {
   assert.equal(
-    classifyManifestKind({ mediaType: "application/vnd.docker.distribution.manifest.list.v2+json" }),
-    ManifestKinds.indexManifest
+    classifyManifestKind({
+      mediaType: "application/vnd.docker.distribution.manifest.list.v2+json",
+      manifests: [
+        {
+          platform: {
+            os: "linux",
+            architecture: "amd64"
+          }
+        },
+        {
+          platform: {
+            os: "linux",
+            architecture: "arm64"
+          }
+        }
+      ]
+    }),
+    ManifestKinds.multiArchManifest
   );
 });
 
-test("classifyManifestKind identifies plain image manifests", () => {
+test("classifyManifestKind identifies OCI image manifests", () => {
   assert.equal(
     classifyManifestKind({ mediaType: "application/vnd.oci.image.manifest.v1+json" }),
+    ManifestKinds.imageManifest
+  );
+});
+
+test("classifyManifestKind identifies Docker schema2 image manifests", () => {
+  assert.equal(
+    classifyManifestKind({ mediaType: "application/vnd.docker.distribution.manifest.v2+json" }),
     ManifestKinds.imageManifest
   );
 });

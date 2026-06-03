@@ -108,12 +108,8 @@ test("executeDeletePlan deletes fully deletable roots and returns a summary", as
   });
 
   assert.deepEqual(deletedVersionIds, [304, 204, 104]);
-  assert.deepEqual(summary.deletedPackageVersions, [
-    { versionId: 304, digest: "sha256:descendant-referrer" },
-    { versionId: 204, digest: "sha256:descendant-child" },
-    { versionId: 104, digest: "sha256:untagged-old" }
-  ]);
-  assert.deepEqual(summary.untaggedTags, []);
+  assert.equal(summary.deletedPackageVersionCount, 3);
+  assert.equal(summary.detachedTagCount, 0);
 });
 
 test("executeDeletePlan applies untag-only roots before deleting fully deletable roots", async () => {
@@ -274,11 +270,8 @@ test("executeDeletePlan applies untag-only roots before deleting fully deletable
     }
   });
 
-  assert.deepEqual(summary.deletedPackageVersions, []);
-  assert.deepEqual(
-    summary.untaggedTags.map((operation) => operation.tag),
-    ["latest"]
-  );
+  assert.equal(summary.deletedPackageVersionCount, 0);
+  assert.equal(summary.detachedTagCount, 1);
   assert.equal(
     fetchCalls.some((call) => call.url === "https://ghcr.io/v2/acme/example/manifests/latest"),
     true

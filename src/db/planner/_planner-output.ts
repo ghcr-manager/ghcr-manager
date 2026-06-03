@@ -24,7 +24,20 @@ export function buildPlanOutputs(
   | "collateralTags"
 > {
   const rootDecisions = buildRootDecisions(directTargetRoots, planArtifacts);
-  const protectedRoots = buildProtectedRoots(planArtifacts.blockedRoots);
+  const fullyDeletableDigests = new Set(
+    rootDecisions
+      .filter((decision) => decision.validationStatus === DeletePlanValidationStatuses.fullyDeletable)
+      .map((decision) => decision.digest)
+  );
+  const blockedDigests = new Set(
+    rootDecisions
+      .filter((decision) => decision.validationStatus === DeletePlanValidationStatuses.blocked)
+      .map((decision) => decision.digest)
+  );
+  const blockedRoots = planArtifacts.blockedRoots.filter((blockedRoot) =>
+    blockedDigests.has(blockedRoot.blockedDigest)
+  );
+  const protectedRoots = buildProtectedRoots(blockedRoots);
 
   return {
     directTargetTags,
@@ -32,8 +45,8 @@ export function buildPlanOutputs(
     rootDecisions,
     protectedRoots,
     closureManifests: planArtifacts.closureManifests,
-    blockedRoots: planArtifacts.blockedRoots,
-    fullyDeletableRoots: planArtifacts.fullyDeletableRoots,
+    blockedRoots,
+    fullyDeletableRoots: planArtifacts.fullyDeletableRoots.filter((root) => fullyDeletableDigests.has(root.digest)),
     collateralTags: []
   };
 }
@@ -43,6 +56,7 @@ export function buildRootDecisions(
   planArtifacts: PlanArtifacts
 ): DeletePlanRootDecision[] {
   const fullyDeletableDigests = new Set(planArtifacts.fullyDeletableRoots.map((root) => root.digest));
+  const supportedUntagOnlyRootDigests = planArtifacts.supportedUntagOnlyRootDigests;
   const blockedRootByDigest = new Map<string, DeletePlanBlockedRoot>();
   for (const blockedRoot of planArtifacts.blockedRoots) {
     if (!blockedRootByDigest.has(blockedRoot.blockedDigest)) {
@@ -51,17 +65,24 @@ export function buildRootDecisions(
   }
 
   return directTargetRoots.map((root) => {
-    if (root.selectionMode === "untag-only") {
+    const blockedRoot = blockedRootByDigest.get(root.digest);
+
+    if (_isUntagOnly(root, blockedRoot, supportedUntagOnlyRootDigests)) {
       return {
         versionId: root.versionId,
         digest: root.digest,
         manifestKind: root.manifestKind,
-        selectionMode: root.selectionMode,
+        selectionMode: "untag-only",
         selectionReason: root.reason,
         validationStatus: DeletePlanValidationStatuses.untagOnly,
-        validationReasonCode: DeletePlanValidationReasonCodes.untagOnlyPartialTagMatch,
+        validationReasonCode:
+          root.selectionMode === "untag-only"
+            ? DeletePlanValidationReasonCodes.untagOnlyPartialTagMatch
+            : DeletePlanValidationReasonCodes.untagOnlyRetainedManifest,
         validationReason:
-          "matched tags cover only part of this root's tag set, so the version is retained and only those tags can be detached"
+          root.selectionMode === "untag-only"
+            ? "matched tags cover only part of this root's tag set, so the version is retained and only those tags can be detached"
+            : "selected tags can be detached, but the manifest itself must remain because surviving tags still need it"
       };
     }
 
@@ -79,7 +100,6 @@ export function buildRootDecisions(
       };
     }
 
-    const blockedRoot = blockedRootByDigest.get(root.digest);
     return {
       versionId: root.versionId,
       digest: root.digest,
@@ -125,4 +145,20 @@ export function buildBlockedValidationReason(blockedRoot?: DeletePlanBlockedRoot
   }
 
   return `blocked because retained root ${blockedRoot.blockingDigest} still requires shared manifest ${blockedRoot.overlapDigest}`;
+}
+
+function _isUntagOnly(
+  root: DeletePlanRoot,
+  blockedRoot: DeletePlanBlockedRoot | undefined,
+  supportedUntagOnlyRootDigests: ReadonlySet<string>
+): boolean {
+  if (root.selectionMode === "untag-only") {
+    return true;
+  }
+
+  return (
+    root.reason === "delete-tags-all-tags-selected" &&
+    ((blockedRoot !== undefined && blockedRoot.overlapDigest === root.digest) ||
+      supportedUntagOnlyRootDigests.has(root.digest))
+  );
 }

@@ -7,7 +7,7 @@ branding:
 
 inputs:
   command:
-    description: Action command to run (`scan`, `cleanup`, or `untag`)
+    description: Action command to run (`scan` or `cleanup`)
     required: true
   token:
     description: GitHub token used for GitHub/GHCR API calls
@@ -24,12 +24,11 @@ inputs:
     required: false
     default: ""
   upload-artifacts:
-    description: Whether to upload action-produced artifacts; unsupported by `untag`
+    description: Whether to upload action-produced artifacts
     required: false
     default: "false"
   scan-after-cleanup:
-    description:
-      Whether live cleanup should run a second full scan so the DB reflects post-mutation state; unsupported by `untag`
+    description: Whether live cleanup should run a second full scan so the DB reflects post-mutation state
     required: false
     default: "false"
   db-artifact-retention-days:
@@ -37,7 +36,7 @@ inputs:
     required: false
     default: ""
   delete-tags:
-    description: Optional newline-separated tags to delete during cleanup or untag
+    description: Optional newline-separated tags to delete during cleanup
     required: false
     default: ""
   exclude-tags:
@@ -77,7 +76,7 @@ inputs:
     required: false
     default: "false"
   dry-run:
-    description: Whether cleanup or untag should simulate changes without mutating GHCR
+    description: Whether cleanup should simulate changes without mutating GHCR
     required: false
     default: "false"
   log-level:
@@ -91,9 +90,7 @@ outputs:
     value: ${{ steps.prepare-db.outputs.db_path }}
   summary-json-path:
     description: Path to the command summary JSON file for commands that emit one
-    value:
-      ${{ inputs.command == 'cleanup' && steps.prepare-cleanup.outputs.summary_path ||
-      steps.prepare-untag.outputs.summary_path }}
+    value: ${{ inputs.command == 'cleanup' && steps.prepare-cleanup.outputs.summary_path }}
 
 runs:
   using: composite
@@ -122,45 +119,12 @@ runs:
       run: |
         set -euo pipefail
         case "${{ inputs.command }}" in
-          scan|cleanup|untag) ;;
+          scan|cleanup) ;;
           *)
-            echo "Unsupported command '${{ inputs.command }}'. Expected 'scan', 'cleanup', or 'untag'." >&2
+            echo "Unsupported command '${{ inputs.command }}'. Expected 'scan' or 'cleanup'." >&2
             exit 1
             ;;
         esac
-
-    - name: Validate untag command inputs
-      if: ${{ inputs.command == 'untag' }}
-      shell: bash
-      env:
-        DB_PATH: ${{ inputs.db-path }}
-        DELETE_TAGS: ${{ inputs.delete-tags }}
-        DELETE_UNTAGGED: ${{ inputs.delete-untagged }}
-        DELETE_GHOST_IMAGES: ${{ inputs.delete-ghost-images }}
-        DELETE_ORPHANED_IMAGES: ${{ inputs.delete-orphaned-images }}
-        DELETE_PARTIAL_IMAGES: ${{ inputs.delete-partial-images }}
-        EXCLUDE_TAGS: ${{ inputs.exclude-tags }}
-        KEEP_N_TAGGED: ${{ inputs.keep-n-tagged }}
-        KEEP_N_UNTAGGED: ${{ inputs.keep-n-untagged }}
-        OLDER_THAN: ${{ inputs.older-than }}
-        SCAN_AFTER_CLEANUP: ${{ inputs.scan-after-cleanup }}
-        UPLOAD_ARTIFACTS: ${{ inputs.upload-artifacts }}
-        USE_REGEX: ${{ inputs.use-regex }}
-      run: |
-        set -euo pipefail
-        [[ -n "$DELETE_TAGS" ]] || { echo "command 'untag' requires delete-tags." >&2; exit 1; }
-        [[ -z "$DB_PATH" ]] || { echo "command 'untag' does not support db-path." >&2; exit 1; }
-        [[ "$UPLOAD_ARTIFACTS" == "false" ]] || { echo "command 'untag' does not support upload-artifacts." >&2; exit 1; }
-        [[ "$SCAN_AFTER_CLEANUP" == "false" ]] || { echo "command 'untag' does not support scan-after-cleanup." >&2; exit 1; }
-        [[ -z "$EXCLUDE_TAGS" ]] || { echo "command 'untag' does not support exclude-tags." >&2; exit 1; }
-        [[ -z "$KEEP_N_TAGGED" ]] || { echo "command 'untag' does not support keep-n-tagged." >&2; exit 1; }
-        [[ -z "$KEEP_N_UNTAGGED" ]] || { echo "command 'untag' does not support keep-n-untagged." >&2; exit 1; }
-        [[ -z "$OLDER_THAN" ]] || { echo "command 'untag' does not support older-than." >&2; exit 1; }
-        [[ "$DELETE_UNTAGGED" == "false" ]] || { echo "command 'untag' does not support delete-untagged." >&2; exit 1; }
-        [[ "$DELETE_GHOST_IMAGES" == "false" ]] || { echo "command 'untag' does not support delete-ghost-images." >&2; exit 1; }
-        [[ "$DELETE_PARTIAL_IMAGES" == "false" ]] || { echo "command 'untag' does not support delete-partial-images." >&2; exit 1; }
-        [[ "$DELETE_ORPHANED_IMAGES" == "false" ]] || { echo "command 'untag' does not support delete-orphaned-images." >&2; exit 1; }
-        [[ "$USE_REGEX" == "false" ]] || { echo "command 'untag' does not support use-regex." >&2; exit 1; }
 
     - name: Resolve artifact upload intent
       id: resolve-upload
@@ -253,38 +217,6 @@ runs:
         printf '\n'
         npm run --silent ghcr-manager:dist -- cleanup "${cleanup_args[@]}"
         cat "${{ steps.prepare-cleanup.outputs.summary_path }}" | jq . >&2
-
-    - name: Prepare untag args
-      id: prepare-untag
-      if: ${{ inputs.command == 'untag' }}
-      shell: bash
-      working-directory: ${{ github.action_path }}
-      env:
-        DELETE_TAGS: ${{ inputs.delete-tags }}
-        DRY_RUN: ${{ inputs.dry-run }}
-        LOG_LEVEL: ${{ inputs.log-level }}
-        OWNER: ${{ inputs.owner }}
-        PACKAGE: ${{ inputs.package }}
-        RUNNER_TEMP: ${{ runner.temp }}
-        SUMMARY_PATH: ${{ runner.temp }}/ghcr-manager-untag-summary.json
-        TOKEN: ${{ inputs.token }}
-      run: |
-        set -euo pipefail
-        node tools/prepare-action-args.mjs untag
-
-    - name: Run untag
-      id: run-untag
-      if: ${{ inputs.command == 'untag' }}
-      shell: bash
-      working-directory: ${{ github.action_path }}
-      run: |
-        set -euo pipefail
-        mapfile -d '' -t untag_args < "${{ steps.prepare-untag.outputs.args_path }}"
-        printf 'Running CLI command: ghcr-manager untag'
-        printf ' %q' "${untag_args[@]}"
-        printf '\n'
-        npm run --silent ghcr-manager:dist -- untag "${untag_args[@]}"
-        cat "${{ steps.prepare-untag.outputs.summary_path }}" | jq . >&2
 
     - name: Scan after live cleanup
       id: scan-after

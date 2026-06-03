@@ -161,9 +161,12 @@ test("handleCleanup live mode persists a cleanup run before execution", async ()
     console.log = originalLog;
   }
 
-  const summary = JSON.parse(writes[0] as string) as { deletedPackageVersions: unknown[]; untaggedTags: unknown[] };
-  assert.deepEqual(summary.deletedPackageVersions, []);
-  assert.deepEqual(summary.untaggedTags, []);
+  const summary = JSON.parse(writes[0] as string) as {
+    deletedPackageVersionCount: number;
+    detachedTagCount: number;
+  };
+  assert.equal(summary.deletedPackageVersionCount, 0);
+  assert.equal(summary.detachedTagCount, 0);
 
   const persistedDatabase = openDatabase(databasePath);
   const cleanupRun = persistedDatabase
@@ -426,25 +429,11 @@ test("handleCleanup live mode applies untag-only roots and records cleanup audit
   }
 
   const summary = JSON.parse(writes[0] as string) as {
-    deletedPackageVersions: Array<{ versionId: number; digest: string }>;
-    untaggedTags: Array<{
-      tag: string;
-      sourceVersionId: number;
-      sourceDigest: string;
-      detachedVersionId: number;
-      detachedDigest: string;
-    }>;
+    deletedPackageVersionCount: number;
+    detachedTagCount: number;
   };
-  assert.deepEqual(summary.deletedPackageVersions, []);
-  assert.deepEqual(summary.untaggedTags, [
-    {
-      tag: "latest",
-      sourceVersionId: 101,
-      sourceDigest: "sha256:index-current",
-      detachedVersionId: 303,
-      detachedDigest
-    }
-  ]);
+  assert.equal(summary.deletedPackageVersionCount, 0);
+  assert.equal(summary.detachedTagCount, 1);
 
   const persistedDatabase = openDatabase(databasePath);
   const cleanupRun = persistedDatabase

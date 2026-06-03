@@ -12,10 +12,9 @@ test("execute types expose delete execution summaries", () => {
       deleteTags: [],
       excludeTags: []
     },
-    deletedPackageVersions: [],
-    untaggedTags: [],
-    blockedRoots: [],
-    unsupportedUntagRoots: []
+    deletedPackageVersionCount: 0,
+    detachedTagCount: 0,
+    blockedRoots: []
   };
 
   assert.equal(summary.owner, "acme");

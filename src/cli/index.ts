@@ -5,7 +5,6 @@ import { fileURLToPath } from "node:url";
 import { handleCleanup } from "./_cleanup-command.js";
 import { handleDbMerge } from "./_db-merge-command.js";
 import { handleScan } from "./_scan-command.js";
-import { handleUntag } from "./_untag-command.js";
 
 export async function main(argv: string[]): Promise<number> {
   const [command, ...rest] = argv;
@@ -21,8 +20,6 @@ export async function main(argv: string[]): Promise<number> {
       return handleDbMerge(rest);
     case "scan":
       return handleScan(rest);
-    case "untag":
-      return handleUntag(rest);
     default:
       throw new Error(`unknown command: ${command}`);
   }
@@ -33,7 +30,6 @@ function printUsage(): void {
   ghcr-manager cleanup --db <path> [--log-level <trace|debug|info|warn|error|silent>] [--dry-run] [--summary-json-path <path>] --owner <org> --package <name> [--token <token>] <cleanup selectors...> [--exclude-tag <tag> ...] [--use-regex] [--older-than <interval>]
   ghcr-manager db-merge --db <target-path> --source-db <path> [--source-db <path> ...]
   ghcr-manager scan --db <path> [--log-level <trace|debug|info|warn|error|silent>] [--github-output <path>] --owner <org> --package <name> --token <token>
-  ghcr-manager untag [--log-level <trace|debug|info|warn|error|silent>] [--dry-run] [--summary-json-path <path>] --owner <org> --package <name> --token <token> --tag <tag> [--tag <tag> ...]
 
 Cleanup selectors:
   --delete-untagged

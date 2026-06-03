@@ -19,7 +19,7 @@ test("planner repository returns normalized typed planner rows", () => {
   writer.insertManifest({
     versionId: 1,
     digest: "sha256:root-a",
-    manifestKind: ManifestKinds.crossArchManifest,
+    manifestKind: ManifestKinds.multiArchManifest,
     mediaType: "application/vnd.oci.image.index.v1+json"
   });
   writer.insertPackageVersion({
@@ -30,7 +30,7 @@ test("planner repository returns normalized typed planner rows", () => {
   writer.insertManifest({
     versionId: 2,
     digest: "sha256:root-b",
-    manifestKind: ManifestKinds.crossArchManifest,
+    manifestKind: ManifestKinds.multiArchManifest,
     mediaType: "application/vnd.oci.image.index.v1+json"
   });
   writer.insertPackageVersion({
@@ -59,9 +59,9 @@ test("planner repository returns normalized typed planner rows", () => {
 
   const plan = repository.getKeepNUntaggedPlan("acme", "pkg", 1);
 
-  assert.equal(plan.directTargetRoots[0]?.manifestKind, ManifestKinds.crossArchManifest);
+  assert.equal(plan.directTargetRoots[0]?.manifestKind, ManifestKinds.multiArchManifest);
   assert.equal(plan.closureManifests[1]?.memberManifestKind, ManifestKinds.imageManifest);
-  assert.equal(plan.blockedRoots[0]?.overlapManifestKind, ManifestKinds.imageManifest);
+  assert.deepEqual(plan.blockedRoots, []);
 
   database.close();
 });

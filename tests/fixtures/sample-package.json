@@ -56,7 +56,7 @@
     {
       "versionId": 102,
       "digest": "sha256:index-old",
-      "manifestKind": "cross_arch_manifest",
+      "manifestKind": "multi_arch_manifest",
       "mediaType": "application/vnd.oci.image.index.v1+json"
     },
     {

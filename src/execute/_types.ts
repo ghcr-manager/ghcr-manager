@@ -1,33 +1,13 @@
 import type { DeletePlan } from "../db/index.js";
 
-export interface DeletePackageVersionOperation {
-  versionId: number;
-  digest: string;
-}
-
-export interface UnsupportedUntagRoot {
-  versionId: number;
-  digest: string;
-  reason: string;
-}
-
-export interface UntagTagOperation {
-  tag: string;
-  sourceVersionId: number;
-  sourceDigest: string;
-  detachedVersionId: number;
-  detachedDigest: string;
-}
-
 export interface DeleteExecutionSummary {
   owner: string;
   packageName: string;
   scanCompletedAt: string;
   plannerInputs: DeletePlan["plannerInputs"];
-  deletedPackageVersions: DeletePackageVersionOperation[];
-  untaggedTags: UntagTagOperation[];
+  deletedPackageVersionCount: number;
+  detachedTagCount: number;
   blockedRoots: DeletePlan["blockedRoots"];
-  unsupportedUntagRoots: UnsupportedUntagRoot[];
 }
 
 export interface DeleteExecutionOptions {

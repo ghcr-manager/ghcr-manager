@@ -132,16 +132,36 @@ function _listLatestOrphanedTags(
   const rows = database
     .prepare(
       `
-        SELECT DISTINCT dtr.tag
-        FROM v_digest_tag_relations dtr
-        INNER JOIN package_versions pv
-          ON pv.scan_id = dtr.scan_id
-         AND pv.version_id = dtr.artifact_version_id
-        WHERE dtr.owner = ?
-          AND dtr.package_name = ?
-          AND dtr.parent_exists = 0
+        WITH latest_scan AS (
+          SELECT scan_id
+          FROM v_latest_scan_per_package
+          WHERE owner = ?
+            AND package_name = ?
+        ),
+        digest_tag_artifacts AS (
+          SELECT
+            t.tag,
+            t.scan_id,
+            t.version_id AS artifact_version_id,
+            'sha256:' || SUBSTR(t.tag, 8, 64) AS parent_digest
+          FROM latest_scan ls
+          JOIN tags t
+            ON t.scan_id = ls.scan_id
+          WHERE t.is_digest_tag = 1
+        )
+        SELECT DISTINCT dta.tag
+        FROM digest_tag_artifacts dta
+        JOIN package_versions pv
+          ON pv.scan_id = dta.scan_id
+         AND pv.version_id = dta.artifact_version_id
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM manifests parent
+            WHERE parent.scan_id = dta.scan_id
+              AND parent.digest = dta.parent_digest
+          )
           AND (? IS NULL OR pv.created_at < ?)
-        ORDER BY dtr.tag
+        ORDER BY dta.tag
       `
     )
     .all(owner, packageName, cutoffTimestamp ?? null, cutoffTimestamp ?? null) as Array<{ tag: string }>;

@@ -25,7 +25,7 @@ export function renderCleanupSummaryMarkdown(
     `| 🏷️ Selected tags | ${summary.directTargetTags.length} |`,
     `| 🔖 Deleted tags | ${summary.changes.deletedTags} |`,
     `| 🖼️ Deleted images | ${summary.changes.deletedImages} |`,
-    `| 📚 Deleted cross-arch manifests | ${summary.changes.deletedCrossArchManifests} |`,
+    `| 📚 Deleted multi-arch manifests | ${summary.changes.deletedMultiArchManifests} |`,
     `| 🧱 Deleted indexes | ${summary.changes.deletedIndexes} |`,
     `| 📄 Deleted total | ${summary.changes.deletedTotal} |`,
     `| 🔗 Tag-only updates | ${summary.untagOnlyRoots.length} |`,
@@ -40,7 +40,7 @@ export function renderCleanupSummaryMarkdown(
   lines.push(..._renderRootSection("🔗 Tags removed only", summary.untagOnlyRoots, maxRootsPerSection));
   lines.push(..._renderRootSection("🛡️ Blocked items", summary.blockedRoots, maxRootsPerSection));
 
-  if (!summary.dryRun && (summary.deletedPackageVersions.length > 0 || summary.untaggedTags.length > 0)) {
+  if (!summary.dryRun && (summary.deletedPackageVersionCount > 0 || summary.detachedTagCount > 0)) {
     lines.push(..._renderLiveEffects(summary));
   }
 
@@ -50,7 +50,7 @@ export function renderCleanupSummaryMarkdown(
 function _renderPlannedDeleteBreakdown(summary: CleanupSummary): string[] {
   const rows = [
     { label: "Images", count: summary.changes.deletedImages },
-    { label: "Cross-arch manifests", count: summary.changes.deletedCrossArchManifests },
+    { label: "Multi-arch manifests", count: summary.changes.deletedMultiArchManifests },
     { label: "Artifact manifests", count: summary.changes.deletedArtifactManifests },
     { label: "Signatures", count: summary.changes.deletedSignatures },
     { label: "Attestations", count: summary.changes.deletedAttestations },
@@ -132,11 +132,8 @@ function _renderRootSection(title: string, roots: CleanupSummaryRoot[], maxRoots
 
 function _renderLiveEffects(summary: CleanupSummary): string[] {
   const lines = ["### Applied changes", ""];
-  lines.push(`- Deleted package versions: ${summary.deletedPackageVersions.length}`);
-  lines.push(`- Detached tags: ${summary.untaggedTags.length}`);
-  if (summary.unsupportedUntagRoots.length > 0) {
-    lines.push(`- Unsupported untag roots: ${summary.unsupportedUntagRoots.length}`);
-  }
+  lines.push(`- Deleted package versions: ${summary.deletedPackageVersionCount}`);
+  lines.push(`- Detached tags: ${summary.detachedTagCount}`);
   lines.push("");
   return lines;
 }
@@ -261,8 +258,8 @@ function _describeManifestKind(manifestKind?: string): string {
   switch (manifestKind) {
     case ManifestKinds.imageManifest:
       return "image";
-    case ManifestKinds.crossArchManifest:
-      return "cross-arch";
+    case ManifestKinds.multiArchManifest:
+      return "multi-arch";
     case ManifestKinds.indexManifest:
       return "index";
     case ManifestKinds.signatureManifest:

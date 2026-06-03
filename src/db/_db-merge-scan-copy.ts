@@ -44,11 +44,12 @@ export class DbMergeScanCopy {
       "package_versions(scan_id, version_id, created_at, updated_at)",
       "package_version_payloads(scan_id, version_id, raw_json)",
       "tags(scan_id, tag, version_id, is_digest_tag)",
-      "manifests(scan_id, version_id, digest, media_type, artifact_type, config_media_type, subject_digest, annotations_json, platform_os, platform_architecture, platform_variant, manifest_kind)",
+      "manifests(scan_id, version_id, digest, media_type, artifact_type, config_media_type, subject_digest, annotations_json, manifest_kind)",
       "manifest_descriptors(scan_id, parent_digest, child_digest, media_type, artifact_type, platform_os, platform_architecture, platform_variant)",
       "manifest_payloads(scan_id, digest, raw_json)",
       "manifest_edges(scan_id, parent_digest, child_digest, edge_kind)",
-      "manifest_reachability(scan_id, ancestor_digest, descendant_digest, min_distance)"
+      "manifest_reachability(scan_id, ancestor_digest, descendant_digest, min_distance)",
+      "manifest_graphs(scan_id, digest, graph_id)"
     ] as const;
 
     for (const spec of copySpecs) {

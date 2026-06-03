@@ -52,7 +52,7 @@ test("buildCleanupSummary groups root decisions and carries live execution effec
           sourceDigest: "sha256:fully",
           memberVersionId: 101,
           memberDigest: "sha256:fully",
-          memberManifestKind: ManifestKinds.crossArchManifest,
+          memberManifestKind: ManifestKinds.multiArchManifest,
           hopsFromRoot: 0,
           memberRole: "root"
         },
@@ -81,7 +81,7 @@ test("buildCleanupSummary groups root decisions and carries live execution effec
         deletedTags: 1,
         deletedImages: 1,
         deletedIndexes: 0,
-        deletedCrossArchManifests: 1,
+        deletedMultiArchManifests: 1,
         deletedArtifactManifests: 0,
         deletedAttestations: 0,
         deletedSignatures: 0,
@@ -92,18 +92,9 @@ test("buildCleanupSummary groups root decisions and carries live execution effec
         packageName: "example",
         scanCompletedAt: "2026-05-20T10:00:00.000Z",
         plannerInputs: { deleteTags: ["delete-me"] },
-        deletedPackageVersions: [{ versionId: 101, digest: "sha256:fully" }],
-        untaggedTags: [
-          {
-            tag: "delete-me",
-            sourceVersionId: 102,
-            sourceDigest: "sha256:untag",
-            detachedVersionId: 202,
-            detachedDigest: "sha256:detached"
-          }
-        ],
-        blockedRoots: [],
-        unsupportedUntagRoots: []
+        deletedPackageVersionCount: 1,
+        detachedTagCount: 1,
+        blockedRoots: []
       }
     }
   );
@@ -117,21 +108,21 @@ test("buildCleanupSummary groups root decisions and carries live execution effec
   assert.equal(summary.blockedRoots.length, 1);
   assert.deepEqual(summary.affectedManifests, [
     { digest: "sha256:child", manifestKind: ManifestKinds.imageManifest },
-    { digest: "sha256:fully", manifestKind: ManifestKinds.crossArchManifest }
+    { digest: "sha256:fully", manifestKind: ManifestKinds.multiArchManifest }
   ]);
   assert.deepEqual(summary.changes, {
     deletedTags: 1,
     deletedImages: 1,
     deletedIndexes: 0,
-    deletedCrossArchManifests: 1,
+    deletedMultiArchManifests: 1,
     deletedArtifactManifests: 0,
     deletedAttestations: 0,
     deletedSignatures: 0,
     deletedTotal: 2
   });
   assert.deepEqual(summary.untagOnlyRoots[0]?.matchedTags, ["delete-me"]);
-  assert.deepEqual(summary.deletedPackageVersions, [{ versionId: 101, digest: "sha256:fully" }]);
-  assert.equal(summary.untaggedTags[0]?.tag, "delete-me");
+  assert.equal(summary.deletedPackageVersionCount, 1);
+  assert.equal(summary.detachedTagCount, 1);
   assert.equal(summary.blockedRoots[0]?.blockingVersionId, 104);
 });
 
@@ -178,7 +169,7 @@ test("buildCleanupSummary trusts planner-facing direct target tags as already fi
         deletedTags: 1,
         deletedImages: 1,
         deletedIndexes: 0,
-        deletedCrossArchManifests: 0,
+        deletedMultiArchManifests: 0,
         deletedArtifactManifests: 0,
         deletedAttestations: 0,
         deletedSignatures: 0,

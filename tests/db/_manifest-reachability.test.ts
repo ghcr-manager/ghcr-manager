@@ -140,6 +140,26 @@ test("rebuildManifestReachability builds reachability bottom-up from direct mani
     }
   ]);
 
+  const graphRows = database
+    .prepare(
+      `
+        SELECT digest, graph_id
+        FROM manifest_graphs
+        ORDER BY digest
+      `
+    )
+    .all() as Array<{
+    digest: string;
+    graph_id: number;
+  }>;
+
+  assert.deepEqual(graphRows, [
+    { digest: "sha256:child-a", graph_id: 1 },
+    { digest: "sha256:child-b", graph_id: 1 },
+    { digest: "sha256:index", graph_id: 1 },
+    { digest: "sha256:leaf", graph_id: 1 }
+  ]);
+
   database.close();
 });
 
@@ -266,11 +286,25 @@ test("rebuildManifestReachability stitches digest-tag helper edges into recursiv
     descendant_digest: string;
     min_distance: number;
   }>;
+  const helperReachabilityRows = database
+    .prepare(
+      `
+        SELECT ancestor_digest, descendant_digest, min_distance
+        FROM manifest_reachability
+        WHERE ancestor_digest = ?
+        ORDER BY descendant_digest
+      `
+    )
+    .all(helperDigest) as Array<{
+    ancestor_digest: string;
+    descendant_digest: string;
+    min_distance: number;
+  }>;
 
   assert.deepEqual(digestTagEdgeRows, [
     {
-      parent_digest: rootDigest,
-      child_digest: helperDigest,
+      parent_digest: helperDigest,
+      child_digest: rootDigest,
       edge_kind: "digest-tag-referrer"
     }
   ]);
@@ -279,17 +313,145 @@ test("rebuildManifestReachability stitches digest-tag helper edges into recursiv
       ancestor_digest: rootDigest,
       descendant_digest: rootDigest,
       min_distance: 0
-    },
+    }
+  ]);
+  assert.deepEqual(helperReachabilityRows, [
     {
-      ancestor_digest: rootDigest,
-      descendant_digest: helperDigest,
+      ancestor_digest: helperDigest,
+      descendant_digest: rootDigest,
       min_distance: 1
     },
     {
-      ancestor_digest: rootDigest,
+      ancestor_digest: helperDigest,
+      descendant_digest: helperDigest,
+      min_distance: 0
+    },
+    {
+      ancestor_digest: helperDigest,
       descendant_digest: childDigest,
-      min_distance: 2
+      min_distance: 1
     }
+  ]);
+
+  const graphRows = database
+    .prepare(
+      `
+        SELECT digest, graph_id
+        FROM manifest_graphs
+        ORDER BY digest
+      `
+    )
+    .all() as Array<{
+    digest: string;
+    graph_id: number;
+  }>;
+
+  assert.deepEqual(graphRows, [
+    { digest: rootDigest, graph_id: 1 },
+    { digest: helperDigest, graph_id: 1 },
+    { digest: childDigest, graph_id: 1 }
+  ]);
+
+  database.close();
+});
+
+test("rebuildManifestReachability assigns different graph ids to disconnected manifest graphs", () => {
+  const database = openDatabase(":memory:");
+  const writer = new ScanWriter(database);
+
+  writer.startScan("acme", "example", "2026-04-20T12:00:00.000Z", {
+    rawJson: JSON.stringify({ visibility: "private" })
+  });
+
+  writer.insertPackageVersion({
+    versionId: 1,
+    createdAt: "2026-04-20T10:00:00.000Z",
+    updatedAt: "2026-04-20T10:00:00.000Z"
+  });
+  writer.insertManifest({
+    versionId: 1,
+    digest: "sha256:a",
+    manifestKind: ManifestKinds.imageManifest,
+    mediaType: "application/vnd.oci.image.manifest.v1+json"
+  });
+  writer.insertPackageVersion({
+    versionId: 2,
+    createdAt: "2026-04-20T10:00:00.000Z",
+    updatedAt: "2026-04-20T10:00:00.000Z"
+  });
+  writer.insertManifest({
+    versionId: 2,
+    digest: "sha256:b",
+    manifestKind: ManifestKinds.imageManifest,
+    mediaType: "application/vnd.oci.image.manifest.v1+json"
+  });
+  writer.insertManifestEdge({
+    parentDigest: "sha256:a",
+    childDigest: "sha256:b",
+    edgeKind: "image-child"
+  });
+
+  writer.insertPackageVersion({
+    versionId: 3,
+    createdAt: "2026-04-20T10:00:00.000Z",
+    updatedAt: "2026-04-20T10:00:00.000Z"
+  });
+  writer.insertManifest({
+    versionId: 3,
+    digest: "sha256:c",
+    manifestKind: ManifestKinds.imageManifest,
+    mediaType: "application/vnd.oci.image.manifest.v1+json"
+  });
+  writer.insertPackageVersion({
+    versionId: 4,
+    createdAt: "2026-04-20T10:00:00.000Z",
+    updatedAt: "2026-04-20T10:00:00.000Z"
+  });
+  writer.insertManifest({
+    versionId: 4,
+    digest: "sha256:d",
+    manifestKind: ManifestKinds.imageManifest,
+    mediaType: "application/vnd.oci.image.manifest.v1+json"
+  });
+  writer.insertManifestEdge({
+    parentDigest: "sha256:c",
+    childDigest: "sha256:d",
+    edgeKind: "referrer"
+  });
+
+  writer.insertPackageVersion({
+    versionId: 5,
+    createdAt: "2026-04-20T10:00:00.000Z",
+    updatedAt: "2026-04-20T10:00:00.000Z"
+  });
+  writer.insertManifest({
+    versionId: 5,
+    digest: "sha256:e",
+    manifestKind: ManifestKinds.imageManifest,
+    mediaType: "application/vnd.oci.image.manifest.v1+json"
+  });
+
+  rebuildManifestReachability(database, writer.getActiveScanId());
+
+  const graphRows = database
+    .prepare(
+      `
+        SELECT digest, graph_id
+        FROM manifest_graphs
+        ORDER BY digest
+      `
+    )
+    .all() as Array<{
+    digest: string;
+    graph_id: number;
+  }>;
+
+  assert.deepEqual(graphRows, [
+    { digest: "sha256:a", graph_id: 1 },
+    { digest: "sha256:b", graph_id: 1 },
+    { digest: "sha256:c", graph_id: 2 },
+    { digest: "sha256:d", graph_id: 2 },
+    { digest: "sha256:e", graph_id: 3 }
   ]);
 
   database.close();

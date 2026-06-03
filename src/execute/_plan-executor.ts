@@ -1,18 +1,14 @@
 import { DeletePlanValidationStatuses, type DeletePlan } from "../db/index.js";
 import { deletePackageVersion } from "./_package-version-delete-client.js";
 import { untagRootTags } from "./_untag-client.js";
-import {
-  type DeleteExecutionOptions,
-  type DeleteExecutionSummary,
-  type DeletePackageVersionOperation
-} from "./_types.js";
+import { type DeleteExecutionOptions, type DeleteExecutionSummary } from "./_types.js";
 
 export async function executeDeletePlan(
   plan: DeletePlan,
   options: DeleteExecutionOptions
 ): Promise<DeleteExecutionSummary> {
-  const deletedPackageVersions: DeletePackageVersionOperation[] = [];
-  const untaggedTags = [];
+  let deletedPackageVersionCount = 0;
+  let detachedTagCount = 0;
   const directTargetTagSet = new Set(plan.directTargetTags);
   const deletedVersionIds = new Set<number>();
 
@@ -36,8 +32,13 @@ export async function executeDeletePlan(
       throw new Error(`no selected tags resolved for untag-only root ${decision.digest}`);
     }
 
-    untaggedTags.push(
-      ...(await untagRootTags(plan.owner, plan.packageName, decision.versionId, decision.digest, selectedTags, options))
+    detachedTagCount += await untagRootTags(
+      plan.owner,
+      plan.packageName,
+      decision.versionId,
+      decision.digest,
+      selectedTags,
+      options
     );
   }
 
@@ -77,10 +78,7 @@ export async function executeDeletePlan(
         fetchImpl: options.fetchImpl
       });
       deletedVersionIds.add(target.versionId);
-      deletedPackageVersions.push({
-        versionId: target.versionId,
-        digest: target.digest
-      });
+      deletedPackageVersionCount += 1;
     }
   }
 
@@ -89,9 +87,8 @@ export async function executeDeletePlan(
     packageName: plan.packageName,
     scanCompletedAt: plan.scanCompletedAt,
     plannerInputs: plan.plannerInputs,
-    deletedPackageVersions,
-    untaggedTags,
-    blockedRoots: plan.blockedRoots,
-    unsupportedUntagRoots: []
+    deletedPackageVersionCount,
+    detachedTagCount,
+    blockedRoots: plan.blockedRoots
   };
 }

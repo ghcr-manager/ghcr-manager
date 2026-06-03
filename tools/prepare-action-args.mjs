@@ -37,27 +37,6 @@ export function buildCleanupArgs(env) {
   };
 }
 
-export function buildUntagArgs(env) {
-  const summaryPath = _requireEnv(env, "SUMMARY_PATH");
-  return {
-    args: [
-      "--log-level",
-      _requireEnv(env, "LOG_LEVEL"),
-      "--owner",
-      _requireEnv(env, "OWNER"),
-      "--package",
-      _requireEnv(env, "PACKAGE"),
-      "--summary-json-path",
-      summaryPath,
-      "--token",
-      _requireEnv(env, "TOKEN"),
-      ..._flag(env.DRY_RUN, "--dry-run"),
-      ..._lineOptions(env.DELETE_TAGS, "--tag")
-    ],
-    summaryPath
-  };
-}
-
 export function writeArgsFile(args, directory) {
   const argsDirectory = mkdtempSync(path.join(directory, "ghcr-manager-args-"));
   const argsPath = path.join(argsDirectory, "argv.bin");
@@ -126,16 +105,7 @@ function _main(argv) {
     return;
   }
 
-  if (command === "untag") {
-    const invocation = buildUntagArgs(process.env);
-    writeGitHubOutputs(process.env.GITHUB_OUTPUT, {
-      args_path: writeArgsFile(invocation.args, tempRoot),
-      summary_path: invocation.summaryPath
-    });
-    return;
-  }
-
-  throw new Error("usage: node tools/prepare-action-args.mjs <cleanup|untag>");
+  throw new Error("usage: node tools/prepare-action-args.mjs <cleanup>");
 }
 
 const _isDirectExecution =

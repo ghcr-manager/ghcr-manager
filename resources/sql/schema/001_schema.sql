@@ -49,13 +49,10 @@ CREATE TABLE IF NOT EXISTS manifests (
   config_media_type TEXT,
   subject_digest TEXT,
   annotations_json TEXT,
-  platform_os TEXT,
-  platform_architecture TEXT,
-  platform_variant TEXT,
   manifest_kind TEXT,
   CHECK(manifest_kind IN (
     'index_manifest',
-    'cross_arch_manifest',
+    'multi_arch_manifest',
     'image_manifest',
     'artifact_manifest',
     'attestation_manifest',
@@ -109,6 +106,15 @@ CREATE TABLE IF NOT EXISTS manifest_reachability (
   CHECK(min_distance >= 0)
 );
 
+CREATE TABLE IF NOT EXISTS manifest_graphs (
+  scan_id INTEGER NOT NULL,
+  digest TEXT NOT NULL,
+  graph_id INTEGER NOT NULL,
+  PRIMARY KEY(scan_id, digest),
+  FOREIGN KEY(scan_id, digest) REFERENCES manifests(scan_id, digest),
+  CHECK(graph_id > 0)
+);
+
 CREATE TABLE IF NOT EXISTS cleanup_runs (
   cleanup_run_id INTEGER PRIMARY KEY,
   scan_id INTEGER NOT NULL,
@@ -152,6 +158,7 @@ CREATE TABLE IF NOT EXISTS cleanup_root_decisions (
   CHECK(validation_status IN ('fully-deletable', 'blocked', 'untag-only')),
   CHECK(validation_reason_code IN (
     'untag-only-partial-tag-match',
+    'untag-only-retained-manifest',
     'fully-deletable-no-retained-overlap',
     'blocked-overlap-with-retained-root'
   )),
@@ -200,7 +207,10 @@ CREATE INDEX IF NOT EXISTS idx_tags_scan_version ON tags(scan_id, version_id);
 CREATE INDEX IF NOT EXISTS idx_manifest_descriptors_scan_child ON manifest_descriptors(scan_id, child_digest);
 CREATE INDEX IF NOT EXISTS idx_manifest_edges_scan_parent ON manifest_edges(scan_id, parent_digest);
 CREATE INDEX IF NOT EXISTS idx_manifest_edges_scan_child ON manifest_edges(scan_id, child_digest);
+CREATE INDEX IF NOT EXISTS idx_manifest_edges_scan_child_kind ON manifest_edges(scan_id, child_digest, edge_kind);
 CREATE INDEX IF NOT EXISTS idx_manifest_reachability_scan_descendant
   ON manifest_reachability(scan_id, descendant_digest);
 CREATE INDEX IF NOT EXISTS idx_manifest_reachability_scan_descendant_distance
   ON manifest_reachability(scan_id, descendant_digest, min_distance);
+CREATE INDEX IF NOT EXISTS idx_manifest_graphs_scan_graph_id
+  ON manifest_graphs(scan_id, graph_id);
