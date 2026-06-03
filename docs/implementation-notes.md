@@ -149,6 +149,12 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
     post-refactor line coverage reflects the live surface more closely
   - root `test` / `coverage` scripts must enable Bash `globstar` before expanding `tests/**/*.test.ts`; otherwise deeper
     mirrored test paths like `tests/db/planner/*` and `tests/ingest/github/*` are skipped in this environment
+  - focused mirrored tests now cover more planner/execute branch behavior in:
+    - `_planner-output.ts`
+    - `_planner-direct-target-roots-tagged.ts`
+    - `_package-version-tag-source-client.ts`
+  - `_manifest-reachability.ts` still has a couple of low-value uncovered defensive branches that are hard to hit
+    without manufacturing states the current algorithm does not naturally produce
 - Action summary handoff note:
   - command summary JSON is now handed across action steps by file path instead of large env/expression payloads
   - this avoids GitHub template-memory and argument-length failures on large cleanup summaries

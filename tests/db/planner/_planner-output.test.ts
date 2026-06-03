@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { ManifestKinds } from "../../../src/core/index.js";
-import { buildPlanOutputs } from "../../../src/db/planner/_planner-output.js";
+import {
+  buildBlockedValidationReason,
+  buildPlanOutputs,
+  buildProtectedRoots,
+  buildRootDecisions
+} from "../../../src/db/planner/_planner-output.js";
 import { DeletePlanValidationStatuses, PlannerRepository, ScanWriter, openDatabase } from "../../../src/db/index.js";
 import type { DeletePlanRoot } from "../../../src/db/planner/index.js";
 
@@ -128,4 +133,110 @@ test("buildPlanOutputs removes untag-only roots from fully deletable execution t
 
   assert.equal(planOutputs.rootDecisions[0]?.validationStatus, DeletePlanValidationStatuses.untagOnly);
   assert.deepEqual(planOutputs.fullyDeletableRoots, []);
+});
+
+test("buildRootDecisions supports explicit untag-only and supported retained-manifest untag-only roots", () => {
+  const directTargetRoots: DeletePlanRoot[] = [
+    {
+      versionId: 1,
+      digest: "sha256:partial",
+      manifestKind: ManifestKinds.imageManifest,
+      reason: "delete-tags-partial-tag-match",
+      selectionMode: "untag-only"
+    },
+    {
+      versionId: 2,
+      digest: "sha256:supported",
+      manifestKind: ManifestKinds.indexManifest,
+      reason: "delete-tags-all-tags-selected",
+      selectionMode: "delete-root"
+    }
+  ];
+
+  const rootDecisions = buildRootDecisions(directTargetRoots, {
+    closureManifests: [],
+    blockedRoots: [],
+    fullyDeletableRoots: [],
+    supportedUntagOnlyRootDigests: new Set(["sha256:supported"])
+  });
+
+  assert.equal(rootDecisions[0]?.validationStatus, DeletePlanValidationStatuses.untagOnly);
+  assert.equal(rootDecisions[0]?.validationReasonCode, "untag-only-partial-tag-match");
+  assert.equal(rootDecisions[1]?.validationStatus, DeletePlanValidationStatuses.untagOnly);
+  assert.equal(rootDecisions[1]?.validationReasonCode, "untag-only-retained-manifest");
+});
+
+test("buildProtectedRoots groups multiple blocks under one retained digest and sorts groups", () => {
+  const protectedRoots = buildProtectedRoots([
+    {
+      blockedVersionId: 1,
+      blockedDigest: "sha256:blocked-a",
+      blockingVersionId: 10,
+      blockingDigest: "sha256:zeta",
+      overlapDigest: "sha256:shared-a",
+      overlapManifestKind: ManifestKinds.imageManifest,
+      reason: "overlap-with-retained-root"
+    },
+    {
+      blockedVersionId: 2,
+      blockedDigest: "sha256:blocked-b",
+      blockingVersionId: 9,
+      blockingDigest: "sha256:alpha",
+      overlapDigest: "sha256:shared-b",
+      overlapManifestKind: ManifestKinds.indexManifest,
+      reason: "overlap-with-retained-root"
+    },
+    {
+      blockedVersionId: 3,
+      blockedDigest: "sha256:blocked-c",
+      blockingVersionId: 10,
+      blockingDigest: "sha256:zeta",
+      overlapDigest: "sha256:shared-c",
+      overlapManifestKind: ManifestKinds.imageManifest,
+      reason: "overlap-with-retained-root"
+    }
+  ]);
+
+  assert.deepEqual(protectedRoots, [
+    {
+      versionId: 9,
+      digest: "sha256:alpha",
+      blocks: [
+        {
+          blockedVersionId: 2,
+          blockedDigest: "sha256:blocked-b",
+          blockReasonCode: "overlap-with-retained-root",
+          overlapDigest: "sha256:shared-b",
+          overlapManifestKind: ManifestKinds.indexManifest
+        }
+      ]
+    },
+    {
+      versionId: 10,
+      digest: "sha256:zeta",
+      blocks: [
+        {
+          blockedVersionId: 1,
+          blockedDigest: "sha256:blocked-a",
+          blockReasonCode: "overlap-with-retained-root",
+          overlapDigest: "sha256:shared-a",
+          overlapManifestKind: ManifestKinds.imageManifest
+        },
+        {
+          blockedVersionId: 3,
+          blockedDigest: "sha256:blocked-c",
+          blockReasonCode: "overlap-with-retained-root",
+          overlapDigest: "sha256:shared-c",
+          overlapManifestKind: ManifestKinds.imageManifest
+        }
+      ]
+    }
+  ]);
+});
+
+test("buildBlockedValidationReason falls back when no blocking root row is present", () => {
+  assert.equal(
+    buildBlockedValidationReason(),
+    "root closure overlaps manifest members still required by a retained root"
+  );
 });
