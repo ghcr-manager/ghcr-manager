@@ -6,12 +6,9 @@ import { PlannerRepository, ScanWriter, openDatabase } from "../../../src/db/ind
 test("planner repository logs read SQL through the shared planner sql helper at debug level", () => {
   const database = openDatabase(":memory:");
   const writer = new ScanWriter(database);
-  const traceMessages: string[] = [];
   const debugMessages: string[] = [];
   const repository = new PlannerRepository(database, {
-    trace(message: string) {
-      traceMessages.push(message);
-    },
+    trace() {},
     debug(message: string) {
       debugMessages.push(message);
     }

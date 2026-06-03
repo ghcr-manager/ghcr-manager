@@ -6,7 +6,6 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 
-const _registryBaseUrl = "https://ghcr.io";
 const _githubApiBaseUrl = "https://api.github.com";
 
 export function parseArgs(helpText) {

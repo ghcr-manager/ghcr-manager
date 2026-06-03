@@ -374,9 +374,8 @@ async function initializeSelectors() {
     const owners = await fetchJson(new URL("/api/owners", window.location.origin));
     replaceOptions(elements.owner, owners, "owner", "Select owner");
     const ownerValues = owners.map((entry) => entry.owner);
-    const initialOwner =
+    elements.owner.value =
       _pickInitialValue(elements.owner.value, ownerValues) || (ownerValues.length === 1 ? ownerValues[0] : "");
-    elements.owner.value = initialOwner;
     await handleOwnerChange({ preservePackageSelection: true, preserveScanSelection: true });
     setStatus("");
   } catch (error) {
@@ -785,25 +784,6 @@ function zoomBy(factor) {
       y: cy.height() / 2
     }
   });
-}
-
-function kindBorderColor(manifestKind) {
-  switch (manifestKind) {
-    case "multi_arch_manifest":
-      return "#0b4f8a";
-    case "index_manifest":
-      return "#00695c";
-    case "image_manifest":
-      return "#2e7d32";
-    case "attestation_manifest":
-      return "#b26a00";
-    case "signature_manifest":
-      return "#7b1fa2";
-    case "artifact_manifest":
-      return "#5f6368";
-    default:
-      return "#355446";
-  }
 }
 
 function nodeBorderColor(node) {
