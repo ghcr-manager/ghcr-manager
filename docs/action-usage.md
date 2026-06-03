@@ -4,7 +4,6 @@
 
 - `cleanup`
 - `scan`
-- `untag`
 
 If the main question is "what would happen?", use `cleanup` with `dry-run` first.
 
@@ -28,13 +27,3 @@ Use `scan` to get an SQLite snapshot of one GHCR package.
 Behavior:
 
 - performs one package scan and uploads the DB as an artifact
-
-### `untag`
-
-Use `untag` when you want to remove specific tags directly.
-
-Behavior:
-
-- requires explicit tags as input
-- exposes `summary-json-path` as an action output
-- no package scan and no DB used

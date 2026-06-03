@@ -4,19 +4,19 @@ This document covers the companion CLI.
 
 Install from `npm` and run `ghcr-manager` directly.
 
-```bash
+```sh
 npm install --global ghcr-manager
 ```
 
 ## Commands
 
-```bash
+```sh
 ghcr-manager <command> ...
 ```
 
 ## Scan
 
-```bash
+```sh
 ghcr-manager scan \
   --db ./tmp/example.sqlite \
   --owner OWNER \
@@ -30,7 +30,7 @@ Note: local scanning is much slower than scanning in a GitHub runner.
 
 Dry-run example:
 
-```bash
+```sh
 ghcr-manager cleanup \
   --db ./tmp/example.sqlite \
   --owner OWNER \
@@ -41,7 +41,7 @@ ghcr-manager cleanup \
 
 Tagged cleanup example:
 
-```bash
+```sh
 ghcr-manager cleanup \
   --db ./tmp/example.sqlite \
   --owner OWNER \
@@ -55,7 +55,7 @@ ghcr-manager cleanup \
 
 Combined tagged and untagged cleanup example:
 
-```bash
+```sh
 ghcr-manager cleanup \
   --db ./tmp/example.sqlite \
   --owner OWNER \
@@ -81,22 +81,9 @@ Notes:
 - `--exclude-tag` requires at least one tagged selector family
 - `--delete-untagged` and `--keep-n-untagged` cannot be combined
 
-## Untag
-
-```bash
-ghcr-manager untag \
-  --owner OWNER \
-  --package PACKAGE \
-  --token "$GITHUB_TOKEN" \
-  --tag old-tag \
-  --tag test-tag
-```
-
-Unlike `cleanup`, `untag` does not take `--db`.
-
 ## DB Merge
 
-```bash
+```sh
 ghcr-manager db-merge \
   --db ./tmp/merged.sqlite \
   --source-db ./tmp/run-a.sqlite \

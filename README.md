@@ -1,9 +1,9 @@
 # ghcr-manager
 
+[![GitHub Marketplace](https://img.shields.io/badge/marketplace-ghcr--manager-blue?logo=github&labelColor=333&style=flat-square)](https://github.com/marketplace/actions/ghcr-manager)
 [![Release](https://img.shields.io/github/v/release/gh-workflow/ghcr-manager?style=flat-square)](https://github.com/gh-workflow/ghcr-manager/releases)
 [![Immutable Releases](https://img.shields.io/badge/releases-immutable-blue?labelColor=333)](https://docs.github.com/en/code-security/supply-chain-security/understanding-your-software-supply-chain/immutable-releases)
-[![GitHub Marketplace](https://img.shields.io/badge/marketplace-ghcr--manager-blue?logo=github&labelColor=333&style=flat-square)](https://github.com/marketplace/actions/ghcr-manager)
-[![Tests](https://img.shields.io/github/actions/workflow/status/gh-workflow/ghcr-manager/.github/workflows/ci_change-validation.yml?branch=main&label=test&style=flat-square)](https://github.com/gh-workflow/ghcr-manager/actions/workflows/change-validation.yml)
+[![Tests](https://img.shields.io/github/actions/workflow/status/gh-workflow/ghcr-manager/.github/workflows/ci_change-validation.yml?branch=main&label=test&style=flat-square)](https://github.com/gh-workflow/ghcr-manager/actions/workflows/ci_change-validation.yml)
 
 Inspect, review, and manage GitHub Container Registry packages.
 
@@ -12,7 +12,6 @@ Inspect, review, and manage GitHub Container Registry packages.
 - scanning one GHCR package into a SQLite database artifact
 - running cleanup with a GitHub step summary and optional DB artifact
 - previewing cleanup decisions with `dry-run` before making changes
-- directly removing selected tags with `untag`
 
 ## Quick Start
 
@@ -55,16 +54,14 @@ After the run:
 
 ## Commands
 
-The action supports three commands:
+The action supports two commands:
 
 - `cleanup`: Cleans using filters; use `dry-run` to preview the result
-- `untag`: Removes one or more tags directly
 - `scan`: Scans one package and uploads the resulting DB artifact
 
 ### Purpose of commands
 
 - `cleanup`: Normal entry point for registry maintenance
-- `untag`: Works directly without a full package scan
 - `scan`: For investigation and audit
 
 ## Common Usage
@@ -109,22 +106,6 @@ If `scan-after-cleanup` is `true`, `cleanup` performs a second scan so the uploa
 
 Note: the second scan only runs if cleanup actually makes changes.
 
-### Remove selected tags directly
-
-```yaml
-- uses: gh-workflow/ghcr-manager@0.9.7
-  with:
-    command: untag
-    token: ${{ github.token }}
-    owner: OWNER
-    package: PACKAGE
-    delete-tags: |
-      old-tag
-      test-tag
-```
-
-`untag` does not use a scan DB and does not support DB artifact upload.
-
 ### Scan one package
 
 ```yaml
@@ -142,32 +123,32 @@ Note: the second scan only runs if cleanup actually makes changes.
 
 <!-- markdownlint-disable MD013 MD060 -->
 
-| Input                        | Description                         | Cmds | Required    | Default                        |
-| ---------------------------- | ----------------------------------- | ---- | ----------- | ------------------------------ |
-| `command`                    | `scan`, `cleanup`, or `untag`       | all  | Yes         |                                |
-| `token`                      | GitHub token for API calls          | all  | Yes         | `${{ github.token }}`          |
-| `owner`                      | Package owner                       | all  | Yes         |                                |
-| `package`                    | Package name                        | all  | Yes         |                                |
-| `db-path`                    | Local SQLite DB path                | s,c  | No          |                                |
-| `upload-artifacts`           | Upload DB and summary artifacts     | s,c  | No          | `false`                        |
-| `scan-after-cleanup`         | Run a second scan after cleanup     | c    | No          | `false`                        |
-| `db-artifact-retention-days` | Override artifact retention days    | s,c  | No          | `${{ github.retention_days }}` |
-| `delete-tags`                | Newline-separated tags to delete    | c,u  | for `untag` |                                |
-| `exclude-tags`               | Newline-separated tags to exclude   | c    | No          |                                |
-| `keep-n-tagged`              | Keep newest tagged roots            | c    | No          |                                |
-| `keep-n-untagged`            | Keep newest untagged roots          | c    | No          |                                |
-| `delete-untagged`            | Delete untagged roots               | c    | No          | `false`                        |
-| `delete-ghost-images`        | Delete ghost multi-arch roots       | c    | No          | `false`                        |
-| `delete-partial-images`      | Delete partial multi-arch roots     | c    | No          | `false`                        |
-| `delete-orphaned-images`     | Delete orphaned digest-derived tags | c    | No          | `false`                        |
-| `older-than`                 | Age cutoff for cleanup selectors    | c    | No          |                                |
-| `use-regex`                  | Use regex for cleanup tag selectors | c    | No          | `false`                        |
-| `dry-run`                    | Show changes without mutating GHCR  | c,u  | No          | `false`                        |
-| `log-level`                  | CLI log level                       | all  | No          | `info`                         |
+| Input                        | Description                         | Cmds | Required | Default                        |
+| ---------------------------- | ----------------------------------- | ---- | -------- | ------------------------------ |
+| `command`                    | `scan` or `cleanup`                 | all  | Yes      |                                |
+| `token`                      | GitHub token for API calls          | all  | Yes      | `${{ github.token }}`          |
+| `owner`                      | Package owner                       | all  | Yes      |                                |
+| `package`                    | Package name                        | all  | Yes      |                                |
+| `db-path`                    | Local SQLite DB path                | s,c  | No       |                                |
+| `upload-artifacts`           | Upload DB and summary artifacts     | s,c  | No       | `false`                        |
+| `scan-after-cleanup`         | Run a second scan after cleanup     | c    | No       | `false`                        |
+| `db-artifact-retention-days` | Override artifact retention days    | s,c  | No       | `${{ github.retention_days }}` |
+| `delete-tags`                | Newline-separated tags to delete    | c    | No       |                                |
+| `exclude-tags`               | Newline-separated tags to exclude   | c    | No       |                                |
+| `keep-n-tagged`              | Keep newest tagged roots            | c    | No       |                                |
+| `keep-n-untagged`            | Keep newest untagged roots          | c    | No       |                                |
+| `delete-untagged`            | Delete untagged roots               | c    | No       | `false`                        |
+| `delete-ghost-images`        | Delete ghost multi-arch roots       | c    | No       | `false`                        |
+| `delete-partial-images`      | Delete partial multi-arch roots     | c    | No       | `false`                        |
+| `delete-orphaned-images`     | Delete orphaned digest-derived tags | c    | No       | `false`                        |
+| `older-than`                 | Age cutoff for cleanup selectors    | c    | No       |                                |
+| `use-regex`                  | Use regex for cleanup tag selectors | c    | No       | `false`                        |
+| `dry-run`                    | Show changes without mutating GHCR  | c    | No       | `false`                        |
+| `log-level`                  | CLI log level                       | all  | No       | `info`                         |
 
 <!-- markdownlint-enable MD013 MD060 -->
 
-`Cmds`: `s` = `scan`, `c` = `cleanup`, `u` = `untag`
+`Cmds`: `s` = `scan`, `c` = `cleanup`
 
 Cleanup command notes:
 
@@ -180,10 +161,10 @@ Cleanup command notes:
 
 ## Outputs
 
-| Output              | Description                                      |
-| ------------------- | ------------------------------------------------ |
-| `db-path`           | SQLite DB path on the runner                     |
-| `summary-json-path` | Summary JSON file path for `cleanup` and `untag` |
+| Output              | Description                          |
+| ------------------- | ------------------------------------ |
+| `db-path`           | SQLite DB path on the runner         |
+| `summary-json-path` | Summary JSON file path for `cleanup` |
 
 ## Artifacts
 
@@ -191,7 +172,6 @@ When artifacts are enabled:
 
 - `scan` always uploads one SQLite DB artifact
 - `cleanup` optionally uploads the DB artifact and a cleanup summary JSON artifact
-- `untag` uploads no artifacts
 
 Current naming:
 
@@ -202,10 +182,11 @@ Current naming:
 
 ## Documentation Map
 
-- [GitHub Action usage](docs/action-usage.md): action commands, including `cleanup`, `scan`, and `untag`
+- [GitHub Action usage](docs/action-usage.md): action commands, including `cleanup` and `scan`
 - [Multi-package workflows](docs/db-merge-workflows.md): cleaning up multiple packages with one combined DB
 - [SQLite schema guide](docs/schema-description.md): practical explanation of the SQLite schema
 - [CLI usage](docs/cli-usage.md): companion CLI usage
+- [Visualizer](docs/visualizer.md): local graph inspection and scan-to-scan comparison
 
 ## Acknowledgment
 

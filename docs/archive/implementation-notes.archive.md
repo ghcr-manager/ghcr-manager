@@ -333,8 +333,8 @@ This section is the canonical place for session-to-session continuity.
     name-pattern filter instead of passing artifact ID lists through temporary files
   - the matrix DB bundle job now runs under `always()` so successful scenario DB artifacts are still collected when one
     or more matrix legs fail
-  - `manual-run-test.yml` now switches to `GHCR_TEST_PAT` automatically when the requested owner matches
-    `GHCR_TEST_OWNER`, so private test-org packages remain scannable without a separate ad hoc workflow edit
+  - `manual-run-test.yml` now switches to `GH_TEST_PAT` automatically when the requested owner matches `GH_TEST_ORG`, so
+    private test-org packages remain scannable without a separate ad hoc workflow edit
   - the latest completed matrix baseline passed for all 18 scenarios × 2 executors (36 jobs), including the
     `delete-ghost-images`, `delete-partial-images`, regex selector scenarios, the Docker manifest-list shared-root
     scenario, and the first cleanup-audit scenario assertions
@@ -384,9 +384,9 @@ This section is the canonical place for session-to-session continuity.
     handled marker from whichever scenario branch ran and only fails at the end if no branch claimed the requested
     strategy
   - live GHCR test workflows now require dedicated test-org configuration:
-    - `GHCR_TEST_OWNER`
-    - `GHCR_TEST_PAT_USERNAME`
-    - `GHCR_TEST_PAT`
+    - `GH_TEST_ORG`
+    - `GH_TEST_PAT_USERNAME`
+    - `GH_TEST_PAT`
   - `test_scenario-executor.yml` also requires `id-token: write` because `blocked-shared-closure` seeds multi-arch
     indexes through `gh-workflow/multiarch-image-publish`, which uses keyless Cosign signing
   - the scenario matrix workflow now inherits caller secrets into the reusable scenario workflow and must also grant
@@ -477,7 +477,7 @@ This section is the canonical place for session-to-session continuity.
 - Cleanup planning roadmap: [docs/cleanup-roadmap.md](cleanup-roadmap.md)
 - Cleanup semantics note: [docs/cleanup-semantics.md](../terminology.md)
 - Planner data model: [docs/planner-data-model.md](../schema-description.md)
-- GHCR test org setup reference: [docs/test-org-setup.md](../test-org-setup.md)
+- GHCR test package setup reference: [docs/test-package-setup.md](../test-package-setup.md)
 
 ### Current Module Layout
 
@@ -821,7 +821,7 @@ src/
 ### 2026-04-29 (missing-manifest query recipes)
 
 - Operationally, GHCR scans can complete with missing manifests (HTTP 404). Ingest skips these and continues.
-- Query recipes are documented in [docs/queries/missing-manifests-queries.md](../queries/missing-manifests-queries.md).
+- Query recipes are documented in [docs/queries/missing-manifests-queries.md](about:blank).
 - Rationale:
   - CLI should stay platform-agnostic and usable outside GitHub Actions.
   - GitHub-specific concerns (artifact retention, upload policy, conditional publish flags) belong to action wiring.

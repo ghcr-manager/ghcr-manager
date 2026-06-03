@@ -63,7 +63,7 @@ This is how the planner knows which digests are tagged.
 - That can be an image index, an image manifest, or an artifact manifest.
 - `manifest_kind` provides an optional best-effort category for debugging:
   - `index_manifest`
-  - `cross_arch_manifest`
+  - `multi_arch_manifest`
   - `image_manifest`
   - `artifact_manifest`
   - `attestation_manifest`
@@ -150,7 +150,7 @@ If you think in Docker terms, translate repo terms like this:
 ## What Not To Assume
 
 - Not every manifest is a multi-arch index.
-- `manifests` contains more than cross-arch documents.
+- `manifests` contains more than multi-arch documents.
 - `manifest_edges` is not a GitHub API object.
 - `manifest_edges` only contains relations where both endpoints are fetched manifests.
 - Missing targets are derived by comparing descriptor and subject references with fetched manifest rows.

@@ -155,7 +155,7 @@ What this means:
 
 - a package version points to exactly one fetched root manifest row
 - this row represents one of:
-  - a generic index/list manifest or a refined cross-arch image manifest
+  - a generic index/list manifest or a refined multi-arch image manifest
   - a single-platform image manifest
   - an OCI artifact manifest
   - a signature or attestation-like artifact
@@ -166,7 +166,7 @@ matters, trust the actual manifest payload fields first.
 Current values:
 
 - `index_manifest`
-- `cross_arch_manifest`
+- `multi_arch_manifest`
 - `image_manifest`
 - `artifact_manifest`
 - `attestation_manifest`
@@ -266,37 +266,6 @@ So:
 One latest completed scan per `owner/package`.
 
 Use this when you want "current latest picture" style queries instead of manually picking a `scan_id`.
-
-### `v_scan_root_manifests`
-
-One root manifest per package version, enriched with query-friendly flags.
-
-Important columns include:
-
-- `root_version_id`
-- `root_digest`
-- `root_manifest_kind`
-- `created_at`
-- `updated_at`
-- `tag_count`
-- `is_tagged`
-- `has_ancestor`
-
-This is the main convenience view for "what are the roots in this scan?"
-
-### `v_digest_tag_relations`
-
-Heuristic helper view for digest-shaped tags such as `sha256-<digest>.sig`.
-
-It extracts a parent digest from the tag name and compares that with:
-
-- whether that digest exists in `manifests`
-- whether the artifact's `subject_digest` matches that parent
-
-This is exploratory/helper data, not authoritative graph structure.
-
-In practice, use it to inspect suspicious digest-shaped tags or orphan-style companion artifacts, not to replace
-`manifest_edges` or `manifest_reachability`.
 
 ### `v_cleanup_root_closure_members`
 

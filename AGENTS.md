@@ -47,6 +47,5 @@ Audience: AI coding agents working in this repo.
 - Treat [docs/implementation-notes.md](docs/implementation-notes.md) as the canonical handoff document.
 - Keep a checkbox-based checklist there for completed work and the current next plan.
 - Record important decisions there when they affect architecture, tooling, or workflow shape.
-- When creating a clean checkpoint commit, add the commit hash to the handoff doc.
 - Treat commits as user-approved checkpoints, not agent-owned defaults.
 - Before starting new implementation work, read the handoff doc and align with its current next plan.

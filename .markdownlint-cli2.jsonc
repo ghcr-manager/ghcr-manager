@@ -1,5 +1,5 @@
 {
-  "globs": ["**/*.md", "!.venv/**", "!node_modules/**", "!dist/**", "!artifacts/**"],
+  "globs": ["**/*.md", "!node_modules/**", "!dist/**", "!artifacts/**"],
   "config": {
     "MD013": {
       "line_length": 120,
