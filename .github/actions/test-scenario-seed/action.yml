@@ -49,6 +49,29 @@ runs:
         echo "GHCR_MANAGER_SCENARIO_SEED_HANDLED=true" >> "$GITHUB_ENV"
         node tools/tests/seed-graph-matrix-scenario.mjs "$SCENARIO_ID" "$IMAGE_REF"
 
+    - name: Split image ref for graph untagging
+      if: ${{ startsWith(inputs.seed_strategy, 'graph-2multiarch2tags-') }}
+      shell: bash
+      run: |
+        image_ref="${{ inputs.image_ref }}"
+        without_registry="${image_ref#ghcr.io/}"
+        owner="${without_registry%%/*}"
+        package="${without_registry#*/}"
+        echo "OWNER=$owner" >> "$GITHUB_ENV"
+        echo "PACKAGE=$package" >> "$GITHUB_ENV"
+
+    - name: Remove extra graph tags for 2multiarch2tags
+      if: ${{ startsWith(inputs.seed_strategy, 'graph-2multiarch2tags-') }}
+      uses: ghcr-manager/ghcr-untag-action@0c32d681a3f68580cbcfebfcf126cbab8df872f8 # v1.0.4
+      with:
+        token: ${{ inputs.registry_password }}
+        owner: ${{ env.OWNER }}
+        package: ${{ env.PACKAGE }}
+        tags: |
+          image-b
+          image-c
+          multiarch-b
+
     - name: Seed basic scenarios
       shell: bash
       run: |

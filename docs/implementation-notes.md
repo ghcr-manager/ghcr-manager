@@ -129,6 +129,10 @@ Historical notes were compacted into [docs/implementation-notes.archive.md](arch
     setup no longer depends on the external publish action that forces cosign
   - graph-matrix cleanup coverage now expands each seeded graph into generated delete-tag scenarios across both
     executors, and latest-scan assertions can now validate expected manifest/tag counts plus absent tags after cleanup
+  - graph-matrix now also has a `2multiarch2tags` family:
+    - it reuses the `2multiarch` seed shape, then untags `image-b`, `image-c`, and `multiarch-b` in the seed action
+    - each extension variant contributes one `delete-multiarch-a` cleanup row and should end in the corresponding
+      `1image` shape plus `keep-dummy`
 - Scenario workflow concurrency note:
   - cleanup scenario execution is serialized per `scenario + executor`
   - user-owner cleanup now has its own dedicated concurrency group because it mutates one fixed package

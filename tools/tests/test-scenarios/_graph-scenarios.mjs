@@ -16,6 +16,11 @@ const _graphTagNamesByBaseCase = {
     multiarchA: "multiarch-a",
     multiarchB: "multiarch-b",
     keepDummy: "keep-dummy"
+  },
+  "2multiarch2tags": {
+    imageA: "image-a",
+    multiarchA: "multiarch-a",
+    keepDummy: "keep-dummy"
   }
 };
 
@@ -109,6 +114,15 @@ const _cleanupOperationsByBaseCase = {
       absentTagNameKeys: ["imageA", "multiarchA"],
       counts: ({ twoImagesCounts }) => twoImagesCounts
     }
+  ],
+  "2multiarch2tags": [
+    {
+      idSuffix: "delete-multiarch-a",
+      deleteTagKeys: ["multiarchA"],
+      presentTagNameKeys: ["imageA", "keepDummy"],
+      absentTagNameKeys: ["multiarchA"],
+      counts: ({ oneImageCounts }) => oneImageCounts
+    }
   ]
 };
 
@@ -161,7 +175,7 @@ for (const [baseCase, extension] of _graphVariants()) {
 }
 
 function* _graphVariants() {
-  for (const baseCase of ["1image", "2images", "2multiarch"]) {
+  for (const baseCase of ["1image", "2images", "2multiarch", "2multiarch2tags"]) {
     for (const extension of ["base", "attestations", "cosign", "cosign-attestations"]) {
       yield [baseCase, extension];
     }
