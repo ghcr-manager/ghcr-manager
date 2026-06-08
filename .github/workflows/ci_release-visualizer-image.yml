@@ -1,0 +1,145 @@
+name: "CI: Release Visualizer Image"
+
+"on":
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+env:
+  # Publishes to GHCR in the current repository owner/project name.
+  IMAGE_REF: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}-visualizer
+
+jobs:
+
+  prepare:
+    name: Resolve image refs
+    runs-on: ubuntu-latest
+    outputs:
+      major_tag: ${{ steps.image.outputs.major_tag }}
+      latest_tag: ${{ steps.image.outputs.latest_tag }}
+    steps:
+      - name: Resolve image tags
+        id: image
+        shell: bash
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [[ "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            major_tag="${REF_NAME%%.*}"
+            latest_tag=latest
+          else
+            major_tag="${REF_NAME}-test"
+            latest_tag="${REF_NAME}-latest"
+          fi
+          echo "major_tag=${major_tag}" >> "$GITHUB_OUTPUT"
+          echo "latest_tag=${latest_tag}" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build image (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    needs: prepare
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    outputs:
+      digest_amd64: ${{ steps.out-amd64.outputs.digest }}
+      digest_arm64: ${{ steps.out-arm64.outputs.digest }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Build image
+        id: build
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+        with:
+          context: .
+          file: visualizer/Dockerfile
+          push: true # Push the arch image so provenance is published.
+          provenance: true
+          platforms: ${{ matrix.platform }}
+          # Temporary image tag for build/test; final tags are published later.
+          tags: ${{ env.IMAGE_REF }}:${{ github.run_id }}-${{ matrix.arch }}-test
+
+      - name: Remove temporary tag on image (optional)
+        uses: ghcr-manager/ghcr-untag-action@0c32d681a3f68580cbcfebfcf126cbab8df872f8 # v1.0.4
+        with:
+          token: ${{ github.token }}
+          owner: ${{ github.repository_owner }}
+          package: ${{ github.event.repository.name }}-demo
+          tags: ${{ github.run_id }}-${{ matrix.arch }}-test
+
+      - name: Test image
+        # Example smoke test: run the image and assert simple output.
+        # Replace this with a real test for your own container.
+        run: |
+          docker run --rm \
+            --entrypoint /bin/sh \
+            "${{ env.IMAGE_REF }}@${{ steps.build.outputs.digest }}" \
+            -ec 'echo hello-world' \
+            | grep -q '^hello-world$'
+
+      - name: Export digest (amd64)
+        id: out-amd64
+        if: matrix.arch == 'amd64'
+        run: echo "digest=${{ steps.build.outputs.digest }}" >> "$GITHUB_OUTPUT"
+
+      - name: Export digest (arm64)
+        id: out-arm64
+        if: matrix.arch == 'arm64'
+        run: echo "digest=${{ steps.build.outputs.digest }}" >> "$GITHUB_OUTPUT"
+
+  publish:
+    name: Publish multi-arch image
+    needs:
+      - prepare
+      - build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish multi-arch image
+        uses: gh-workflow/multiarch-image-publish@0.2.1
+        with:
+          image_ref: ${{ env.IMAGE_REF }}
+          tags: |
+            ${{ github.ref_name }}
+            ${{ needs.prepare.outputs.major_tag }}
+            ${{ needs.prepare.outputs.latest_tag }}
+          platform_digests: |
+            linux/amd64=${{ needs.build.outputs.digest_amd64 }}
+            linux/arm64=${{ needs.build.outputs.digest_arm64 }}
+          publish_platform_tags: "true"
+          annotations: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.version=${{ github.ref_name }}
+
+      - name: Print result
+        run: |
+          echo "Published ${{ env.IMAGE_REF }}:${{ github.ref_name }}"
+          echo "Published ${{ env.IMAGE_REF }}:${{ env.LATEST_TAG }}"

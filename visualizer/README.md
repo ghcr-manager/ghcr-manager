@@ -19,6 +19,15 @@ curl -LO https://github.com/ghcr-manager/ghcr-manager/releases/latest/download/g
 npx ghcr-manager-visualizer --db ./ghcr-manager-release-scenarios.sqlite
 ```
 
+Or run the release image:
+
+```sh
+docker run --rm -p 8080:8080 \
+  -v "$PWD:/data:ro" \
+  ghcr.io/ghcr-manager/ghcr-manager-visualizer:latest \
+  --db /data/ghcr-manager-release-scenarios.sqlite
+```
+
 Open the local URL printed by the command and select:
 
 - owner: `ghcr-manager-test`
@@ -56,6 +65,28 @@ Example:
 ```sh
 ghcr-manager-visualizer --db ./artifacts/acme__demo.sqlite --host 0.0.0.0 --port 4000
 ```
+
+## Docker
+
+Release images are published only from release tags and use these tags:
+
+- `vX.Y.Z`
+- `vX`
+- `latest`
+
+Example:
+
+```sh
+docker run --rm -p 8080:8080 \
+  -v "$PWD:/data:ro" \
+  ghcr.io/ghcr-manager/ghcr-manager-visualizer:v1.0.6 \
+  --db /data/acme__demo.sqlite
+```
+
+Container defaults:
+
+- host: `0.0.0.0`
+- port: `8080`
 
 ## DB Input
 
