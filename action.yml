@@ -103,7 +103,7 @@ runs:
         echo "::warning title=Action moved::Please migrate to ghcr-manager/ghcr-cleanup-manager."
 
     - id: ghcr-cleanup-manager
-      uses: ghcr-manager/ghcr-cleanup-manager@3ff1156424b762fdcbebb026021191db128931b3  # v1.1.0
+      uses: ghcr-manager/ghcr-cleanup-manager@cf1cb8d94b1e28f8c9777bc37e7132453c7a90ae  # v1.1.2
       with:
         command: ${{ inputs.command }}
         token: ${{ inputs.token }}
