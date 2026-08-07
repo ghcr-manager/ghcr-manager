@@ -4,35 +4,174 @@ name: "CI: lint"
   workflow_call:
   workflow_dispatch:
     inputs:
-      write-job-summary:
-        description: "Controls job summary output"
+      fix_mode:
+        description: How to publish autofixes for this run
         required: false
-        default: "on-failure-only"
+        default: pull_request
         type: choice
         options:
-          - "on-failure-only"
-          - "true"
-  pull_request:
-  push:
+          - none
+          - pull_request
+      runner:
+        description: Runner used for this run
+        required: false
+        default: ubuntu-latest
+        type: choice
+        options:
+          - ubuntu-latest
+          - self-hosted
+
+concurrency:
+  group: >-
+    ${{ github.workflow }}-${{ github.ref }}${{
+      github.event_name == 'workflow_dispatch' && '-manual-' || ''
+    }}${{
+      github.event_name == 'workflow_dispatch' && github.run_id || ''
+    }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
+env:
+  # create PR with fixes on:
+  # - push to default branch
+  # - by choice on workflow_dispatch
+  FIX_MODE: >-
+    ${{
+      (
+        github.event_name == 'push' &&
+        github.ref_name == github.event.repository.default_branch
+      ) && 'pull_request' || (github.event.inputs.fix_mode || 'none')
+    }}
+
 jobs:
   lint:
     name: Run linters
-    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' || !startsWith(github.head_ref, 'lint-autofix/') }}
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    runs-on: ${{ github.event.inputs.runner || 'ubuntu-latest' }}
+    env:
+      BRANCH_REPO: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
     steps:
+      - name: Verify fix mode
+        run: |
+          set -euo pipefail
+          if [[ "${FIX_MODE}" != 'none' && "${BRANCH_REPO}" != "${GITHUB_REPOSITORY}" ]]; then
+            echo "FIX_MODE=${FIX_MODE} requires a branch in the current repository." >&2
+            exit 1
+          fi
+
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          token: ${{ secrets.PAT || github.token }}
           fetch-depth: 0
+          persist-credentials: false
 
-      - name: Ensure workflow actions use immutable refs
-        uses: joshjohanning/ensure-immutable-actions@9f5dad6bb6148bd29ff0d874de6a8cc70af08fa9  # v2.6.2
+      - name: Get user information
+        run: |
+          {
+            echo "MEGALINTER_UID=$(id -u)"
+            echo "MEGALINTER_GID=$(id -g)"
+            echo "MEGALINTER_USER=$(id -un)"
+          } >> "$GITHUB_ENV"
+
+      - name: MegaLinter
+        id: ml
+        continue-on-error: true
+        uses: oxsecurity/megalinter@ef3e84b8b836d76db562d0f3ed7da61e8fd538bc # v9.6.0
+        env:
+          VALIDATE_ALL_CODEBASE: true
+          GITHUB_TOKEN: ${{ github.token }}
+          APPLY_FIXES: ${{ env.FIX_MODE != 'none' && 'all' || 'none' }}
+          APPLY_FIXES_EVENT: ${{ github.event_name }}
+          APPLY_FIXES_MODE: pull_request
+          REPORT_OUTPUT_FOLDER: ${{ runner.temp }}/megalinter-reports
+          MEGALINTER_UID: ${{ env.MEGALINTER_UID }}
+          MEGALINTER_GID: ${{ env.MEGALINTER_GID }}
+          MEGALINTER_USER: ${{ env.MEGALINTER_USER }}
+
+      - name: Upload MegaLinter artifacts
+        if: success() || failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          include-first-party: "true"
-          write-job-summary: ${{ inputs.write-job-summary || 'on-failure-only' }}
+          name: MegaLinter reports
+          include-hidden-files: "true"
+          path: |
+            ${{ runner.temp }}/megalinter-reports
+            mega-linter.log
 
-      - name: Super-Linter
-        uses: ./.github/actions/lint
+      - name: Create Pull Request with applied fixes
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        id: cpr
+        if: >-
+          always() && steps.ml.outputs.has_updated_sources == 1 && env.FIX_MODE == 'pull_request'
+        with:
+          token: ${{ github.token }}
+          sign-commits: true
+          commit-message: "[MegaLinter] Apply linters automatic fixes"
+          title: "[MegaLinter] Apply linters automatic fixes"
+          body-path: ${{ runner.temp }}/megalinter-reports/megalinter-report.md
+          # Keep the branch name stable so repeated runs update the same PR.
+          branch: lint-autofix/${{ github.ref_name }}
+          delete-branch: true
+          labels: bot
+          add-paths: |
+            .
+            :(exclude).github/workflows/**
+
+      - name: Log created lint PR
+        if: >-
+          always() && steps.ml.outputs.has_updated_sources == 1 && env.FIX_MODE == 'pull_request'
+        env:
+          PR_NUMBER: ${{ steps.cpr.outputs.pull-request-number }}
+          PR_URL: ${{ steps.cpr.outputs.pull-request-url }}
+        run: |
+          echo "PR Number - ${PR_NUMBER}"
+          echo "PR URL - ${PR_URL}"
+
+      - name: Close stale lint PR
+        if: >-
+          always() && steps.ml.outputs.has_updated_sources != 1 && env.FIX_MODE == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          PR_BRANCH: lint-autofix/${{ github.ref_name }}
+          BASE_BRANCH: ${{ github.ref_name }}
+          CLOSE_COMMENT: Closing stale pull request because the latest lint run produced no fixes.
+        run: |
+          set -euo pipefail
+
+          pr_match="$(
+            gh pr list \
+              --repo "${REPOSITORY}" \
+              --head "${PR_BRANCH}" \
+              --base "${BASE_BRANCH}" \
+              --state open \
+              --json number,title \
+              --jq 'if length == 0 then "" else "\(.[0].number)\t\(.[0].title)" end'
+          )"
+
+          if [[ -z "${pr_match}" ]]; then
+            exit 0
+          fi
+
+          IFS=$'\t' read -r pr_number pr_title <<< "${pr_match}"
+
+          gh pr close "${pr_number}" \
+            --repo "${REPOSITORY}" \
+            --delete-branch \
+            --comment "${CLOSE_COMMENT}"
+
+          echo "Closed PR #${pr_number}: ${pr_title}"
+
+      - name: Fail if linting found issues
+        if: >-
+          always() && steps.ml.outcome == 'failure'
+        run: |
+          echo "MegaLinter found issues."
+          exit 1

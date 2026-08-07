@@ -1,0 +1,17 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "ignorePaths": ["**/.git/**"],
+  "words": [
+    "SHFMT",
+    "ZIZMOR",
+    "artipacked",
+    "cooldown",
+    "lycheeignore",
+    "pipefail",
+    "shfmt",
+    "softprops",
+    "superlinter",
+    "zizmor"
+  ]
+}

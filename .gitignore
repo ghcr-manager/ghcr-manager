@@ -1,2 +1,7 @@
-/.idea
 /artifacts
+
+# superlinter output
+/super-linter-output/
+
+# megalinter adds this when using checkov
+/.megalinter_github_conf/

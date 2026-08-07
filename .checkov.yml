@@ -1,0 +1,5 @@
+# report only problems not all passed checks
+quiet: true
+skip-check:
+  # Allow inputs to workflows
+  - CKV_GHA_7
