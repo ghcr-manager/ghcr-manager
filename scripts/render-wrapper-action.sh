@@ -51,12 +51,12 @@ runs:
         echo "::warning title=Action moved::Please migrate to ghcr-manager/ghcr-cleanup-manager."
 
     - id: ghcr-cleanup-manager
-      uses: ghcr-manager/ghcr-cleanup-manager@${upstream_action_sha}  # ${upstream_action_tag}
+      uses: ghcr-manager/ghcr-cleanup-manager@${upstream_action_sha} # ${upstream_action_tag}
       with:
 EOF
 
   # shellcheck disable=SC2016
   yq eval '.inputs | keys | .[] | "        \(.)" + ": ${{ inputs.\(.) }}"' "${upstream_action_file}"
-} > "${tmp_file}"
+} >"${tmp_file}"
 
 mv "${tmp_file}" "${output_path}"

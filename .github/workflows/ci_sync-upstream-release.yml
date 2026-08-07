@@ -108,7 +108,7 @@ jobs:
           else
             git add -A
             git commit -m "Sync wrapper to ${UPSTREAM_TAG}"
-            git push origin HEAD:${GITHUB_REF_NAME}
+            git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
 
       - name: Move major tag
