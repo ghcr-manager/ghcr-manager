@@ -18,8 +18,8 @@ echo "Fetching latest release tag from https://api.github.com/repos/${GITHUB_REP
 release_tag="$(
   curl \
     "${curl_args[@]}" \
-    "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/latest" \
-  | jq -r '.tag_name'
+    "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/latest" |
+    jq -r '.tag_name'
 )"
 
 if [[ -z "${release_tag}" ]]; then

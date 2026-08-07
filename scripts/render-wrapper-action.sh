@@ -57,6 +57,6 @@ EOF
 
   # shellcheck disable=SC2016
   yq eval '.inputs | keys | .[] | "        \(.)" + ": ${{ inputs.\(.) }}"' "${upstream_action_file}"
-} > "${tmp_file}"
+} >"${tmp_file}"
 
 mv "${tmp_file}" "${output_path}"
