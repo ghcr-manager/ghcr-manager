@@ -1,0 +1,11 @@
+FORMATTERS_DISABLE_ERRORS: false
+
+# jscpd
+COPYPASTE_JSCPD_ARGUMENTS: "--threshold 10"
+
+# shfmt
+BASH_SHFMT_ARGUMENTS: "--indent 2 -case-indent"
+
+# zizmor
+ACTION_ZIZMOR_UNSECURED_ENV_VARIABLES:
+  - GITHUB_TOKEN
