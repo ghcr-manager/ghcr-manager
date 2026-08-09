@@ -1,0 +1,119 @@
+name: Create signed commit
+description: Create a GitHub-signed commit from staged changes using createCommitOnBranch.
+inputs:
+  branch:
+    description: Branch name to append the commit to.
+    required: true
+  commit-message:
+    description: Commit message headline.
+    required: true
+  repository:
+    description: Repository name with owner.
+    required: true
+outputs:
+  commit_sha:
+    description: SHA of the created signed commit.
+    value: ${{ steps.commit.outputs.commit_sha }}
+runs:
+  using: composite
+  steps:
+    - name: Create signed commit
+      id: commit
+      shell: bash
+      env:
+        BRANCH: ${{ inputs.branch }}
+        COMMIT_MESSAGE: ${{ inputs.commit-message }}
+        GH_TOKEN: ${{ github.token }}
+        REPOSITORY: ${{ inputs.repository }}
+      run: |
+        set -euo pipefail
+
+        additions_json='[]'
+        while IFS= read -r -d '' path; do
+          contents="$(base64 -w 0 -- "$path")"
+          additions_json="$(
+            jq -cn \
+              --argjson additions "$additions_json" \
+              --arg contents "$contents" \
+              --arg path "$path" \
+              '$additions + [{contents: $contents, path: $path}]'
+          )"
+        done < <(git diff --cached --name-only --diff-filter=ACMR -z)
+
+        deletions_json='[]'
+        while IFS= read -r -d '' path; do
+          deletions_json="$(
+            jq -cn \
+              --argjson deletions "$deletions_json" \
+              --arg path "$path" \
+              '$deletions + [{path: $path}]'
+          )"
+        done < <(git diff --cached --name-only --diff-filter=D -z)
+
+        query="$(cat <<'EOF'
+        mutation(
+          $additions: [FileAddition!]!
+          $branch: String!
+          $deletions: [FileDeletion!]!
+          $expectedHeadOid: GitObjectID!
+          $message: String!
+          $repo: String!
+        ) {
+          createCommitOnBranch(
+            input: {
+              branch: {
+                branchName: $branch
+                repositoryNameWithOwner: $repo
+              }
+              expectedHeadOid: $expectedHeadOid
+              fileChanges: {
+                additions: $additions
+                deletions: $deletions
+              }
+              message: {
+                headline: $message
+              }
+            }
+          ) {
+            commit {
+              oid
+            }
+          }
+        }
+        EOF
+        )"
+
+        request_body="$(mktemp)"
+        response_body="$(mktemp)"
+        trap 'rm -f "$request_body" "$response_body"' EXIT
+
+        jq -n \
+          --arg branch "$BRANCH" \
+          --arg expectedHeadOid "$(git rev-parse HEAD)" \
+          --arg message "$COMMIT_MESSAGE" \
+          --arg query "$query" \
+          --arg repo "$REPOSITORY" \
+          --argjson additions "$additions_json" \
+          --argjson deletions "$deletions_json" \
+          '{
+            query: $query,
+            variables: {
+              additions: $additions,
+              branch: $branch,
+              deletions: $deletions,
+              expectedHeadOid: $expectedHeadOid,
+              message: $message,
+              repo: $repo
+            }
+          }' > "$request_body"
+
+        gh api graphql --input "$request_body" > "$response_body"
+
+        commit_sha="$(jq -r '.data.createCommitOnBranch.commit.oid' < "$response_body")"
+        if [[ -z "$commit_sha" || "$commit_sha" == "null" ]]; then
+          echo "failed to create signed commit" >&2
+          cat "$response_body" >&2
+          exit 1
+        fi
+
+        echo "commit_sha=${commit_sha}" >> "$GITHUB_OUTPUT"
