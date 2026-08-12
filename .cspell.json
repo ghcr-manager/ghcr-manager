@@ -3,12 +3,11 @@
   "language": "en",
   "ignorePaths": ["**/.git/**"],
   "words": [
-    "ACMR",
     "SHFMT",
     "ZIZMOR",
-    "argjson",
     "artipacked",
     "cooldown",
+    "iarekylew",
     "lycheeignore",
     "mktemp",
     "pipefail",

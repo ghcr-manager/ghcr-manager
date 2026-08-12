@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       branch: ${{ steps.branch.outputs.name }}
-      target_sha: ${{ steps.stage.outputs.target_sha || steps.commit.outputs.commit_sha }}
+      target_sha: ${{ steps.stage.outputs.target_sha || steps.commit.outputs.commit }}
       exists: ${{ steps.existing.outputs.exists }}
     steps:
       - name: Checkout # zizmor: ignore[artipacked] this workflow must push commits and tags back to the repository
@@ -110,14 +110,18 @@ jobs:
       - name: Commit wrapper update
         id: commit
         if: ${{ steps.existing.outputs.exists != 'true' && !steps.stage.outputs.target_sha }}
-        uses: ./.github/actions/create-signed-commit
+        uses: iarekylew00t/verified-bot-commit@1ccc6afd0f789e8442cff7deec3e9856a693cc7e # v2
         with:
-          branch: ${{ github.ref_name }}
-          commit-message: Sync wrapper to ${{ steps.upstream.outputs.upstream_tag }}
+          auto-stage: false
+          files: |
+            **
+          message: Sync wrapper to ${{ steps.upstream.outputs.upstream_tag }}
+          ref: ${{ github.ref }}
           repository: ${{ github.repository }}
+          update-local: false
 
       - name: Fetch signed commit
-        if: ${{ steps.existing.outputs.exists != 'true' && steps.commit.outputs.commit_sha }}
+        if: ${{ steps.existing.outputs.exists != 'true' && steps.commit.outputs.commit }}
         run: |
           set -euo pipefail
           git fetch origin "${GITHUB_REF_NAME}" --depth=1
@@ -125,7 +129,7 @@ jobs:
       - name: Push tags
         if: ${{ steps.existing.outputs.exists != 'true' }}
         env:
-          TARGET_SHA: ${{ steps.stage.outputs.target_sha || steps.commit.outputs.commit_sha }}
+          TARGET_SHA: ${{ steps.stage.outputs.target_sha || steps.commit.outputs.commit }}
           UPSTREAM_TAG: ${{ steps.upstream.outputs.upstream_tag }}
         run: |
           set -euo pipefail
