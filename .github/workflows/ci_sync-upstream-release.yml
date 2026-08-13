@@ -94,7 +94,14 @@ jobs:
 
       - name: lint
         if: ${{ steps.existing.outputs.exists != 'true' }}
-        uses: ./.github/actions/lint
+        uses: super-linter/super-linter@9e863354e3ff62e0727d37183162c4a88873df41 # v8.6.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          MULTI_STATUS: false
+          VALIDATE_ALL_CODEBASE: true
+          VALIDATE_BASH: true
+          VALIDATE_MARKDOWN: true
+          VALIDATE_YAML: true
 
       - name: Stage wrapper update
         id: stage
