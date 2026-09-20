@@ -5,7 +5,8 @@
   "packageRules": [
     {
       "matchManagers": ["github-actions"],
-      "groupName": "github-actions"
+      "groupName": "github-actions",
+      "minimumReleaseAge": "3 days"
     }
   ]
 }
