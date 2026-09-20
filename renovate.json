@@ -1,6 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "forkProcessing": "enabled",
+  "separateMajorMinor": false,
   "enabledManagers": ["github-actions"],
   "labels": ["dependencies"],
   "packageRules": [
