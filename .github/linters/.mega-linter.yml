@@ -1,4 +1,5 @@
 FORMATTERS_DISABLE_ERRORS: false
+LINTER_RULES_PATH: .github/linters
 
 # jscpd
 COPYPASTE_JSCPD_ARGUMENTS: "--threshold 10"

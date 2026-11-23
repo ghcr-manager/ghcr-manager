@@ -85,6 +85,7 @@ jobs:
         continue-on-error: true
         uses: oxsecurity/megalinter@f2fe8c1cba37091848df3e524066c8c23ef353ed # v10.2.0
         env:
+          MEGALINTER_CONFIG: .github/linters/.mega-linter.yml
           VALIDATE_ALL_CODEBASE: true
           GITHUB_TOKEN: ${{ github.token }}
           APPLY_FIXES: ${{ env.FIX_MODE != 'none' && 'all' || 'none' }}
